@@ -4,17 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ProtectedRoute } from "@/lib/protected-route";
 
-// const NAV_ITEMS = [
-//   { href: "/admin", label: "Dashboard" },
-//   { href: "/admin/products", label: "Products" },
-//   { href: "/admin/categories", label: "Categories" },
-//   { href: "/admin/brands", label: "Brands" },
-//   { href: "/admin/orders", label: "Orders" },
-//   { href: "/admin/coupons", label: "Coupons" },
-//   { href: "/admin/payments", label: "Payments" },
-//   { href: "/admin/users", label: "Users" },
-// ];
-
 
 
 const NAV_ITEMS = [
@@ -23,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/brands", label: "Brands" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/inventory", label: "Inventory"},
   { href: "/admin/coupons", label: "Coupons" },
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/users", label: "Users" },

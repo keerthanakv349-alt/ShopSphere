@@ -334,3 +334,57 @@ export async function deleteBanner(
     `/api/v1/admin/banners/${bannerId}`
   );
 }
+
+
+
+// --- Inventory ---
+
+export interface InventoryItem {
+  variant_id: string;
+  product_id: string;
+  product_name: string;
+  sku: string;
+  size: string;
+  color: string;
+  stock_quantity: number;
+}
+
+export interface InventoryResponse {
+  items: InventoryItem[];
+  total_variants: number;
+  total_units: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+}
+
+export async function fetchInventory(params?: {
+  search?: string;
+  low_stock_only?: boolean;
+  out_of_stock_only?: boolean;
+}): Promise<InventoryResponse> {
+  const { data } = await api.get<InventoryResponse>(
+    "/api/v1/admin/inventory",
+    {
+      params,
+    }
+  );
+
+  return data;
+}
+
+export async function updateInventoryStock(
+  variantId: string,
+  stockQuantity: number
+) {
+  const { data } = await api.put(
+    `/api/v1/admin/inventory/${variantId}/stock`,
+    undefined,
+    {
+      params: {
+        stock_quantity: stockQuantity,
+      },
+    }
+  );
+
+  return data;
+}
