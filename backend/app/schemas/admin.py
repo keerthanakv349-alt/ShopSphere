@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.user import UserRole
 from app.schemas.order import OrderOut
+from app.schemas.address import AddressOut
 
 
 class AdminUserOut(BaseModel):
@@ -79,3 +80,20 @@ class BannerOut(BaseModel):
     display_order: int
     is_active: bool
     created_at: datetime
+
+class AdminCustomerDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+    email: EmailStr
+    phone_number: str | None
+    role: UserRole
+    is_active: bool
+    is_email_verified: bool
+    created_at: datetime
+
+    addresses: list[AddressOut]
+    total_orders: int
+    total_spend: Decimal
+    orders: list[OrderOut]

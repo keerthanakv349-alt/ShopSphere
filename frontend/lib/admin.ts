@@ -244,10 +244,83 @@ export async function fetchAdminUsers(q?: string): Promise<AdminUser[]> {
   return data;
 }
 
+export interface AdminCustomerDetail {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string | null;
+  role: "customer" | "admin" | "super_admin";
+  is_active: boolean;
+  is_email_verified: boolean;
+  created_at: string;
+
+  addresses: {
+    id: string;
+    label: string;
+    full_name: string;
+    phone_number: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+    is_default: boolean;
+  }[];
+
+  total_orders: number;
+  total_spend: string;
+
+  orders: {
+    id: string;
+    order_number: string;
+    status: string;
+    subtotal: string;
+    discount_amount: string;
+    gst_amount: string;
+    shipping_charge: string;
+    total_amount: string;
+    coupon_code: string | null;
+    shipping_full_name: string;
+    shipping_phone_number: string;
+    shipping_line1: string;
+    shipping_line2: string;
+    shipping_city: string;
+    shipping_state: string;
+    shipping_postal_code: string;
+    shipping_country: string;
+    created_at: string;
+
+    items: {
+      id: string;
+      product_id: string;
+      product_name: string;
+      sku: string;
+      size: string | null;
+      color: string | null;
+      unit_price: string;
+      quantity: number;
+      line_total: string;
+    }[];
+  }[];
+}
+
+export async function fetchCustomerDetail(
+  customerId: string
+): Promise<AdminCustomerDetail> {
+  const { data } = await api.get<AdminCustomerDetail>(
+    `/api/v1/admin/customers/${customerId}`
+  );
+
+  return data;
+}
+
 export async function updateUserStatus(userId: string, isActive: boolean): Promise<AdminUser> {
   const { data } = await api.put<AdminUser>(`/api/v1/admin/users/${userId}/status`, { is_active: isActive });
   return data;
 }
+
+
 
 export async function updateUserRole(userId: string, role: UserRole): Promise<AdminUser> {
   const { data } = await api.put<AdminUser>(`/api/v1/admin/users/${userId}/role`, { role });

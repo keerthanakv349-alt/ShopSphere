@@ -38,6 +38,7 @@ from app.api.v1.admin_inventory import router as admin_inventory_router
 from app.api.v1.admin_notifications import router as admin_notifications_router
 from app.api.v1.admin_orders import router as admin_orders_router
 from app.api.v1.admin_users import router as admin_users_router
+from app.api.v1.admin_customers import router as admin_customers_router
 from app.api.v1.addresses import router as addresses_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.cart import router as cart_router
@@ -125,6 +126,7 @@ app.include_router(admin_coupons_router)
 app.include_router(admin_inventory_router)
 app.include_router(payments_router)
 app.include_router(admin_users_router)
+app.include_router(admin_customers_router)
 app.include_router(admin_dashboard_router)
 app.include_router(admin_notifications_router)
 app.include_router(reviews_router)
