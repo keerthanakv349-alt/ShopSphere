@@ -50,6 +50,7 @@ from app.api.v1.payments import router as payments_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.search import router as search_router
+from app.api.v1.wishlist import router as wishlist_router
 from app.api.v1.ws import router as ws_router
 from app.core.config import settings
 from app.core.exception_handlers import UnhandledExceptionMiddleware, register_exception_handlers
@@ -131,6 +132,7 @@ app.include_router(admin_dashboard_router)
 app.include_router(admin_notifications_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)
+app.include_router(wishlist_router)
 app.include_router(ws_router)
 app.include_router(delivery_router)
 app.include_router(search_router)

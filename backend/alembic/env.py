@@ -32,6 +32,7 @@ from app.models.notification import Notification  # noqa: F401
 from app.models.delivery import DeliveryPartner, TrackingEvent  # noqa: F401
 from app.models.search_log import SearchQuery  # noqa: F401
 from app.models.banner import Banner  # noqa: F401
+from app.models.wishlist import WishlistItem  # noqa: F401
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
