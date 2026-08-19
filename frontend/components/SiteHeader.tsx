@@ -36,6 +36,10 @@ export function SiteHeader() {
               <Link href="/orders" className="hover:text-brand">
                 Orders
               </Link>
+
+              <Link href="/wishlist" className="hover:text-brand">
+  Wishlist
+</Link>
               <Link href="/cart" className="relative hover:text-brand">
                 Cart
                 {itemCount > 0 && (
