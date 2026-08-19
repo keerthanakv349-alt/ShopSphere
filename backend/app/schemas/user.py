@@ -24,11 +24,10 @@ class SignupRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def password_complexity(cls, v: str) -> str:
-        # Production rule: require at least one digit and one letter.
-        # Rejecting weak passwords here means bad input never even reaches
-        # the DB layer — validation should happen as early as possible.
         if not any(c.isdigit() for c in v) or not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter and one number")
+            raise ValueError(
+                "Password must contain at least one letter and one number"
+            )
         return v
 
 
@@ -41,6 +40,18 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class UpdateProfileRequest(BaseModel):
+    """
+    Fields that a logged-in customer can update from My Profile.
+
+    Email is intentionally not included here.
+    Changing an email should have a separate email-verification flow.
+    """
+
+    full_name: str = Field(min_length=2, max_length=120)
+    phone_number: str | None = Field(default=None, max_length=20)
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
@@ -48,9 +59,6 @@ class TokenPair(BaseModel):
 
 
 class UserOut(BaseModel):
-    # from_attributes lets this schema build directly from a SQLAlchemy
-    # User object (schema.model_validate(user_orm_instance)) instead of
-    # requiring a manual dict conversion.
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
