@@ -57,16 +57,11 @@ function EditProfileContent() {
       }, 800);
 
       
+
+      
     },
 
-    // onError: (error: any) => {
-    //   const detail =
-    //     error?.response?.data?.detail ||
-    //     "Unable to update your profile.";
-
-    //   setErrorMessage(detail);
-    //   setSuccessMessage("");
-    // },
+  
 
     onError: (error: any) => {
   console.error("PROFILE UPDATE ERROR:", error);

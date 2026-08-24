@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import toast from "react-hot-toast";
-
+import { getMediaUrl } from "@/lib/media";
 import { fetchWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { formatINR } from "@/lib/price";
@@ -121,7 +121,7 @@ function WishlistContent() {
               key={item.id}
               className="overflow-hidden rounded-lg border border-outline-variant bg-white dark:border-neutral-800 dark:bg-neutral-950"
             >
-              <Link href={`/products/${product.slug}`}>
+              {/* <Link href={`/products/${product.slug}`}>
                 <div className="relative aspect-[4/5] bg-neutral-100">
                   {product.primary_image_url ? (
                     <img
@@ -135,8 +135,23 @@ function WishlistContent() {
                     </div>
                   )}
                 </div>
-              </Link>
+              </Link> */}
 
+<Link href={`/products/${product.slug}`}>
+  <div className="relative aspect-[4/5] bg-neutral-100">
+    {getMediaUrl(product.primary_image_url) ? (
+      <img
+        src={getMediaUrl(product.primary_image_url)!}
+        alt={product.name}
+        className="h-full w-full object-cover"
+      />
+    ) : (
+      <div className="flex h-full items-center justify-center text-sm text-neutral-400">
+        No image
+      </div>
+    )}
+  </div>
+</Link>
               <div className="p-4">
                 <Link href={`/products/${product.slug}`}>
                   <h2 className="font-medium hover:text-brand">
