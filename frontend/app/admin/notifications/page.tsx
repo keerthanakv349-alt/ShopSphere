@@ -24,7 +24,7 @@ export default function AdminNotificationsPage() {
     data,
     isLoading,
     isError,
-  } = useQuery({
+  } = useQuery<NotificationResponse>({
     queryKey: ["admin-notifications"],
     queryFn: fetchNotifications,
   });

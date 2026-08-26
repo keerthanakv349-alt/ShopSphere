@@ -78,6 +78,10 @@ def signup(
         )
 
     user = User(
+
+
+
+
         full_name=payload.full_name.strip(),
         email=normalized_email,
         hashed_password=hash_password(payload.password),

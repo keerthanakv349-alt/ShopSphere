@@ -19,7 +19,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { FiHeart } from "react-icons/fi";
 
 import { ProductCard } from "@/components/ProductCard";
@@ -129,6 +129,7 @@ function ProductCardWithWishlist({
  */
 
 export function ProductsPageContent() {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -439,7 +440,7 @@ export function ProductsPageContent() {
             SIDEBAR
         ================================================== */}
 
-        <aside className="flex flex-col gap-lg">
+        <aside className="hidden flex-col gap-lg md:flex">
 
 
           {/* =================================================
@@ -776,3 +777,5 @@ export function ProductsPageContent() {
     </main>
   );
 }
+
+
