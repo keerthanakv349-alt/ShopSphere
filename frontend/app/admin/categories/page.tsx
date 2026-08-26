@@ -3,8 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import toast from "react-hot-toast";
-// import { createCategory } from "@/lib/admin";
-import { createCategory, updateCategory } from "@/lib/admin";
+import { createCategory, deleteCategory, updateCategory } from "@/lib/admin";
 import { fetchCategories } from "@/lib/catalog";
 import { ErrorState } from "@/components/ErrorState";
 import { getErrorMessage } from "@/lib/error-message";
@@ -13,7 +12,7 @@ export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState("");
-const [editingName, setEditingName] = useState("");
+  const [editingName, setEditingName] = useState("");
 
   const { data: categories, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["categories"],
@@ -31,24 +30,27 @@ const [editingName, setEditingName] = useState("");
   });
 
   const updateMutation = useMutation({
-  mutationFn: ({ id, name }: { id: string; name: string }) =>
-    updateCategory(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateCategory(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setEditingId("");
+      setEditingName("");
+      toast.success("Category updated");
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err));
+    },
+  });
 
-  onSuccess: () => {
-    queryClient.invalidateQueries({
-      queryKey: ["categories"],
-    });
-
-    setEditingId("");
-    setEditingName("");
-
-    toast.success("Category updated");
-  },
-
-  onError: (err) => {
-    toast.error(getErrorMessage(err));
-  },
-});
+  const deleteMutation = useMutation({
+    mutationFn: (categoryId: string) => deleteCategory(categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      toast.success("Category deleted");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
 
   return (
     <div>
@@ -87,58 +89,73 @@ const [editingName, setEditingName] = useState("");
               key={category.id}
               className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800"
             >
-            {/* <span>{category.name}</span> */}
-            {editingId === category.id ? (
-  <input
-    value={editingName}
-    onChange={(e) => setEditingName(e.target.value)}
-    className="rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-  />
-) : (
-  <span>{category.name}</span>
-)}
-              {/* <span className="text-xs text-neutral-500">/{category.slug}</span> */}
+              {editingId === category.id ? (
+                <input
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  className="rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              ) : (
+                <span>{category.name}</span>
+              )}
               <div className="flex items-center gap-2">
-  <span className="text-xs text-neutral-500">
-    /{category.slug}
-  </span>
+                <span className="text-xs text-neutral-500">
+                  /{category.slug}
+                </span>
 
-  {editingId === category.id ? (
-    <>
-      <button
-        onClick={() =>
-          updateMutation.mutate({
-            id: category.id,
-            name: editingName,
-          })
-        }
-        className="rounded bg-green-600 px-2 py-1 text-xs text-white"
-      >
-        Save
-      </button>
+                {editingId === category.id ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        updateMutation.mutate({
+                          id: category.id,
+                          name: editingName,
+                        })
+                      }
+                      className="rounded bg-green-600 px-2 py-1 text-xs text-white"
+                    >
+                      Save
+                    </button>
 
-      <button
-        onClick={() => {
-          setEditingId("");
-          setEditingName("");
-        }}
-        className="rounded bg-gray-500 px-2 py-1 text-xs text-white"
-      >
-        Cancel
-      </button>
-    </>
-  ) : (
-    <button
-      onClick={() => {
-        setEditingId(category.id);
-        setEditingName(category.name);
-      }}
-      className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
-    >
-      Edit
-    </button>
-  )}
-</div>
+                    <button
+                      onClick={() => {
+                        setEditingId("");
+                        setEditingName("");
+                      }}
+                      className="rounded bg-gray-500 px-2 py-1 text-xs text-white"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditingId(category.id);
+                        setEditingName(category.name);
+                      }}
+                      className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Delete category "${category.name}"? This only works if no products (active or inactive) are assigned to it.`
+                          )
+                        ) {
+                          deleteMutation.mutate(category.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
           {categories?.length === 0 && <p className="text-sm text-neutral-500">No categories yet.</p>}

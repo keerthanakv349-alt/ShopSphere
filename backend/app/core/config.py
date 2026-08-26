@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str = "Admin@12345"
     DEFAULT_ADMIN_FULL_NAME: str = "ShopSphere Admin"
 
+
+    
+    # ---------------------------------------------------------
+    # Pexels (stock photo fetch script — not used by the running app)
+    # ---------------------------------------------------------
+    PEXELS_API_KEY: str | None = None
+
     # ---------------------------------------------------------
     # Pydantic Settings Configuration
     # ---------------------------------------------------------

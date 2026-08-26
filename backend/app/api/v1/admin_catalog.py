@@ -144,6 +144,30 @@ def update_category(
 
 
 
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    category_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(admin_only)
+):
+    category = db.get(Category, category_id)
+    if category is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
+
+    product_count = db.query(Product).filter(Product.category_id == category_id).count()
+    if product_count > 0:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Cannot delete '{category.name}': {product_count} product(s) still "
+            "assigned to it (including any already deactivated). Delete those "
+            "products or reassign them to a different category first.",
+        )
+
+    db.delete(category)
+    db.commit()
+    return None
+
+
+
+
 
 
 

@@ -118,6 +118,11 @@ export async function updateCategory(
   return data;
 }
 
+
+
+export async function deleteCategory(categoryId: string): Promise<void> {
+  await api.delete(`/api/v1/admin/categories/${categoryId}`);
+}
 export async function createBrand(name: string, logoUrl?: string): Promise<Brand> {
   const { data } = await api.post<Brand>("/api/v1/admin/brands", { name, logo_url: logoUrl });
   return data;

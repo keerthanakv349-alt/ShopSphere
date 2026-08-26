@@ -116,13 +116,21 @@ export default function AdminProductsPage() {
                   Edit
                 </Link>
                 {product.status !== "inactive" && (
-                  <button
-                    onClick={() => deleteMutation.mutate(product.id)}
-                    className="text-xs text-neutral-500 underline hover:text-red-500"
-                  >
-                    Deactivate
-                  </button>
-                )}
+  <button
+    onClick={() => {
+      if (
+        window.confirm(
+          `Delete "${product.name}"? It will be hidden from the storefront immediately (this is a deactivation, not a permanent row delete — order history stays intact).`
+        )
+      ) {
+        deleteMutation.mutate(product.id);
+      }
+    }}
+    className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+  >
+    Delete
+  </button>
+)}
               </div>
             );
           })}
