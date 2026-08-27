@@ -1,12 +1,13 @@
-// import type { Metadata } from "next";
+﻿// import type { Metadata } from "next";
 // import { Toaster } from "react-hot-toast";
 // import { AppHeader } from "@/components/AppHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 // import { ReactQueryProvider } from "./providers";
 // import "./globals.css";
 
 // export const metadata: Metadata = {
 //   title: {
-//     default: "ShopSphere — Fashion & Lifestyle",
+//     default: "ShopSphere â€” Fashion & Lifestyle",
 //     template: "%s | ShopSphere",
 //   },
 //   description:
@@ -24,7 +25,7 @@
 //         <ReactQueryProvider>
 //           <AppHeader />
 
-//           {children}
+//           {children}          <SiteFooter />
 
 //           <Toaster position="top-center" />
 //         </ReactQueryProvider>
@@ -44,7 +45,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "ShopSphere – Fashion & Lifestyle",
+    default: "ShopSphere â€“ Fashion & Lifestyle",
     template: "%s | ShopSphere",
   },
   description:
@@ -62,7 +63,7 @@ export default function RootLayout({
         <ReactQueryProvider>
           <AppHeader />
 
-          {children}
+          {children}          <SiteFooter />
 
           <Toaster position="top-center" />
         </ReactQueryProvider>
@@ -70,3 +71,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+

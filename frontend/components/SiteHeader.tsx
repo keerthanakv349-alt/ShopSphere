@@ -114,13 +114,22 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-container-max items-center justify-between px-4 py-3 sm:px-gutter">
         
         {/* Logo */}
-        <Link
+        {/* <Link
           href="/"
           className="font-heading text-headline-md font-bold tracking-tight text-brand"
           onClick={closeMobileMenu}
         >
           ShopSphere
-        </Link>
+        </Link> */}
+
+        {/* Logo */}
+<Link
+  href="/"
+  className="text-2xl font-bold tracking-tight text-brand"
+  onClick={closeMobileMenu}
+>
+  ShopSphere
+</Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-5 text-body-md md:flex">
