@@ -109,10 +109,28 @@ def seed_admin(db) -> None:
     print(f"  [ok] created admin user: {settings.DEFAULT_ADMIN_EMAIL} / {settings.DEFAULT_ADMIN_PASSWORD}")
 
 
+# CATEGORY_NAMES = [
+#     "Men",
+#     "Women",
+#     "Kids",
+#     "Footwear",
+#     "Accessories",
+#     "Bags",
+#     "Watches",
+#     "Eyewear",
+#     "Sportswear",
+#     "Ethnic Wear",
+#     "Winter Wear",
+#     "Innerwear & Loungewear",
+# ]
+
 CATEGORY_NAMES = [
+    # Main categories
     "Men",
     "Women",
     "Kids",
+
+    # Existing categories — keep these because existing products use them
     "Footwear",
     "Accessories",
     "Bags",
@@ -122,27 +140,171 @@ CATEGORY_NAMES = [
     "Ethnic Wear",
     "Winter Wear",
     "Innerwear & Loungewear",
+
+    # Men subcategories
+    "Men - T-Shirts",
+    "Men - Shirts",
+    "Men - Jeans",
+    "Men - Trousers",
+    "Men - Jackets",
+    "Men - Footwear",
+    "Men - Sports & Activewear",
+    "Men - Accessories",
+
+    # Women subcategories
+    "Women - Tops",
+    "Women - Dresses",
+    "Women - Sarees",
+    "Women - Kurtas",
+    "Women - Jeans",
+    "Women - Trousers",
+    "Women - Handbags",
+    "Women - Footwear",
+    "Women - Beauty",
+    "Women - Accessories",
+
+    # Kids subcategories
+    "Kids - Boys",
+    "Kids - Girls",
+    "Kids - Toys & Games",
+    "Kids - Footwear",
+    "Kids - Accessories",
+
+    # Home subcategories
+    "Home",
+    "Home - Home Decor",
+    "Home - Bedding",
+    "Home - Bath & Flooring",
+    "Home - Kitchen",
+    "Home - Furniture",
+
+    # Beauty subcategories
+    "Beauty",
+    "Beauty - Makeup",
+    "Beauty - Skincare",
+    "Beauty - Haircare",
+    "Beauty - Fragrances",
+    "Beauty - Bath & Body",
+
+    # GenZ
+    "GenZ",
+    "GenZ - Trending",
+    "GenZ - Streetwear",
+    "GenZ - Footwear",
+    "GenZ - Accessories",
+    "GenZ - Style Picks",
+
+    # Studio
+    "Studio",
+    "Studio - Fashion Stories",
+    "Studio - Trending Looks",
+    "Studio - Style Guide",
+    "Studio - New Arrivals",
 ]
 
 
 def seed_categories(db) -> dict[str, Category]:
-    names = CATEGORY_NAMES
     result: dict[str, Category] = {}
-    for name in names:
+
+    # Create all categories first.
+    for name in CATEGORY_NAMES:
         slug = slugify(name)
-        existing = db.query(Category).filter(Category.slug == slug).first()
+
+        existing = (
+            db.query(Category)
+            .filter(Category.slug == slug)
+            .first()
+        )
+
         if existing:
             print(f"  [skip] category '{name}' already exists")
             result[name] = existing
             continue
-        category = Category(name=name, slug=slug)
+
+        category = Category(
+            name=name,
+            slug=slug,
+        )
+
         db.add(category)
         db.commit()
         db.refresh(category)
+
         result[name] = category
         print(f"  [ok] created category: {name}")
-    return result
 
+    # Set parent-child relationships.
+    parent_children = {
+        "Men": [
+            "Men - T-Shirts",
+            "Men - Shirts",
+            "Men - Jeans",
+            "Men - Trousers",
+            "Men - Jackets",
+            "Men - Footwear",
+            "Men - Sports & Activewear",
+            "Men - Accessories",
+        ],
+        "Women": [
+            "Women - Tops",
+            "Women - Dresses",
+            "Women - Sarees",
+            "Women - Kurtas",
+            "Women - Jeans",
+            "Women - Trousers",
+            "Women - Handbags",
+            "Women - Footwear",
+            "Women - Beauty",
+        ],
+        "Kids": [
+            "Kids - Boys",
+            "Kids - Girls",
+            "Kids - Toys & Games",
+            "Kids - Footwear",
+            "Kids - Accessories",
+        ],
+        "Home": [
+            "Home - Home Decor",
+            "Home - Bedding",
+            "Home - Bath & Flooring",
+            "Home - Kitchen",
+            "Home - Furniture",
+        ],
+        "Beauty": [
+            "Beauty - Makeup",
+            "Beauty - Skincare",
+            "Beauty - Haircare",
+            "Beauty - Fragrances",
+            "Beauty - Bath & Body",
+        ],
+        "GenZ": [
+            "GenZ - Trending",
+            "GenZ - Streetwear",
+            "GenZ - Footwear",
+            "GenZ - Accessories",
+            "GenZ - Style Picks",
+        ],
+        "Studio": [
+            "Studio - Fashion Stories",
+            "Studio - Trending Looks",
+            "Studio - Style Guide",
+            "Studio - New Arrivals",
+        ],
+    }
+
+    for parent_name, child_names in parent_children.items():
+        parent = result[parent_name]
+
+        for child_name in child_names:
+            child = result[child_name]
+
+            if child.parent_id != parent.id:
+                child.parent_id = parent.id
+                db.add(child)
+
+    db.commit()
+
+    return result
 
 BRAND_NAMES = [
     "Nike",
@@ -828,34 +990,137 @@ PRODUCTS: list[dict] = [
         "variants": _apparel_variants("UA-BOXERJOCK2", ["S", "M", "L"], ["Black"]),
     },
 ]
+PRODUCT_CATEGORY_MAP = {
+    # Men
+    "511 Slim Fit Jeans": "Men - Jeans",
+    "Regular Fit Oxford Shirt": "Men - Shirts",
+    "Slim Fit Chino Trousers": "Men - Trousers",
+    "Airism Crew Neck Tee": "Men - T-Shirts",
+    "Dri-FIT Training Tee": "Men - Sports & Activewear",
+
+    # Women
+    "Satin Wrap Midi Dress": "Women - Dresses",
+    "Ribbed Knit Bodysuit": "Women - Tops",
+    "Ultra Light Down Vest": "Women - Tops",
+    "501 High Rise Jeans": "Women - Jeans",
+    "Tailored Single-Breasted Blazer": "Women - Tops",
+
+    # Kids
+    "Cotton Graphic Print Tee": "Kids - Boys",
+    "Fleece Zip-Up Hoodie": "Kids - Boys",
+    "Junior Track Suit Set": "Kids - Boys",
+    "Denim Dungaree Overalls": "Kids - Girls",
+    "Junior Running Shoes": "Kids - Footwear",
+
+    # Footwear
+    "Air Runner Sneakers": "Men - Footwear",
+    "Ultraboost Running Shoes": "Men - Footwear",
+    "Cloud Cushion Slides": "Men - Footwear",
+    "Classic Leather Sneakers": "Men - Footwear",
+    "Trek Leather Boots": "Men - Footwear",
+
+    # Accessories
+    "Bifold Leather Wallet": "Men - Accessories",
+    "Reversible Leather Belt": "Men - Accessories",
+    "Ribbed Wool Beanie": "Men - Accessories",
+    "Curb Chain Bracelet": "Women - Accessories",
+    "Printed Silk Scarf": "Women - Accessories",
+
+    # Bags
+    "Everyday Structured Tote Bag": "Women - Handbags",
+    "Canvas Travel Backpack": "Women - Handbags",
+    "Quilted Crossbody Bag": "Women - Handbags",
+    "Leather Messenger Bag": "Men - Accessories",
+    "Mini Shoulder Bag": "Women - Handbags",
+
+    # Watches
+    "Gen 6 Smartwatch": "Men - Accessories",
+    "Grant Chronograph Watch": "Men - Accessories",
+    "Neutra Minimalist Watch": "Women - Accessories",
+    "Carlie Rose Gold Watch": "Women - Accessories",
+    "Townsman Leather Watch": "Men - Accessories",
+
+    # Eyewear
+    "Aviator Classic Sunglasses": "Men - Accessories",
+    "Wayfarer Sunglasses": "Men - Accessories",
+    "Round Metal Sunglasses": "Women - Accessories",
+    "Clubmaster Sunglasses": "Men - Accessories",
+    "Erika Sunglasses": "Women - Accessories",
+
+    # Sportswear
+    "HeatGear Compression Tee": "Men - Sports & Activewear",
+    "Dri-FIT Running Shorts": "Men - Sports & Activewear",
+    "Techfit Training Tights": "Men - Sports & Activewear",
+    "Training Tank Top": "Men - Sports & Activewear",
+    "CrossFit Training Shorts": "Men - Sports & Activewear",
+
+    # Ethnic Wear
+    "Embroidered Kurta Set": "Women - Kurtas",
+    "Printed Anarkali Dress": "Women - Dresses",
+    "Linen Kurta": "Women - Kurtas",
+    "Nehru Jacket": "Men - Jackets",
+    "Bandhani Print Dupatta Set": "Women - Kurtas",
+
+    # Winter Wear
+    "Ultra Light Down Puffer Jacket": "Men - Jackets",
+    "Wool Blend Overcoat": "Men - Jackets",
+    "Cable Knit Sweater": "Men - Jackets",
+    "Fleece Zip Hoodie": "Men - Jackets",
+    "Sherpa Trucker Jacket": "Men - Jackets",
+
+    # Innerwear & Loungewear
+    "Airism Boxer Briefs (3-Pack)": "Men - T-Shirts",
+    "Cotton Lounge Pants": "Men - Trousers",
+    "Ribbed Cami & Shorts Set": "Women - Tops",
+    "Seamless Sports Bra": "Women - Tops",
+    "Boxerjock Briefs (2-Pack)": "Men - T-Shirts",
+}
 
 
-def seed_products(db, categories: dict[str, Category], brands: dict[str, Brand]) -> None:
+def seed_products(
+    db,
+    categories: dict[str, Category],
+    brands: dict[str, Brand],
+) -> None:
     for spec in PRODUCTS:
         slug = slugify(spec["name"])
-        existing = db.query(Product).filter(Product.slug == slug).first()
+
+        category_name = PRODUCT_CATEGORY_MAP.get(
+            spec["name"],
+            spec["category"],
+        )
+
+        existing = (
+            db.query(Product)
+            .filter(Product.slug == slug)
+            .first()
+        )
+
         if existing:
-            print(f"  [skip] product '{spec['name']}' already exists")
+            existing.category_id = categories[category_name].id
+            db.add(existing)
+            db.commit()
+
+            print(
+                f"  [update] product '{spec['name']}' "
+                f"→ category '{category_name}'"
+            )
             continue
 
         product = Product(
             name=spec["name"],
             slug=slug,
             description=spec["description"],
-            category_id=categories[spec["category"]].id,
+            category_id=categories[category_name].id,
             brand_id=brands[spec["brand"]].id,
             base_price=spec["base_price"],
             discount_percentage=spec["discount_percentage"],
             gst_percentage=Decimal("12.00"),
-            # ACTIVE, not the model's default DRAFT — GET /api/v1/products
-            # filters on status == ACTIVE (see api/v1/catalog.py), so
-            # seeding as DRAFT would insert rows that still never appear
-            # on the storefront. This is the exact "empty database" bug
-            # from audit item #3, just moved one layer deeper.
             status=ProductStatus.ACTIVE,
             is_featured=spec["is_featured"],
             is_trending=False,
         )
+
         product.variants = [
             ProductVariant(
                 sku=v["sku"],
@@ -865,36 +1130,49 @@ def seed_products(db, categories: dict[str, Category], brands: dict[str, Brand])
             )
             for v in spec["variants"]
         ]
+
         db.add(product)
         db.commit()
         db.refresh(product)
 
-        # Two images per product: one primary, one secondary — enough for
-        # ProductOut.primary_image_url (list/grid view) and the detail
-        # page's image gallery to both have real data to render.
         db.add(
             ProductImage(
                 product_id=product.id,
                 image_url=_generate_placeholder_image(
-                    product.id, slug, spec["name"], spec["brand"], spec["category"], "-1"
+                    product.id,
+                    slug,
+                    spec["name"],
+                    spec["brand"],
+                    spec["category"],
+                    "-1",
                 ),
                 is_primary=True,
                 display_order=0,
             )
         )
+
         db.add(
             ProductImage(
                 product_id=product.id,
                 image_url=_generate_placeholder_image(
-                    product.id, slug, spec["name"], spec["brand"], spec["category"], "-2"
+                    product.id,
+                    slug,
+                    spec["name"],
+                    spec["brand"],
+                    spec["category"],
+                    "-2",
                 ),
                 is_primary=False,
                 display_order=1,
             )
         )
-        db.commit()
-        print(f"  [ok] created product: {spec['name']} ({len(spec['variants'])} variant(s), 2 image(s))")
 
+        db.commit()
+
+        print(
+            f"  [ok] created product: {spec['name']} "
+            f"({len(spec['variants'])} variant(s), 2 image(s))"
+        )
 
 def seed_coupons(db) -> None:
     """Optional, per audit item #3's brief — a couple of realistic coupons
