@@ -85,6 +85,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 
 import { fetchCart } from "@/lib/cart";
 import { useAuthStore } from "@/lib/auth-store";
@@ -123,14 +124,24 @@ export function SiteHeader() {
         </Link> */}
 
         {/* Logo */}
+{/* Logo */}
 <Link
   href="/"
-  className="text-2xl font-bold tracking-tight text-brand"
+  className="flex items-center"
   onClick={closeMobileMenu}
 >
-  ShopSphere
+  <Image
+    src="/images/logo.png"
+    alt="ShopSphere"
+    width={42}
+    height={42}
+    priority
+    className="h-10 w-10 object-contain"
+  />
+ <span className="text-2xl font-bold tracking-tight text-brand">
+    ShopSphere
+  </span>
 </Link>
-
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-5 text-body-md md:flex">
           <Link href="/products" className="hover:text-brand">

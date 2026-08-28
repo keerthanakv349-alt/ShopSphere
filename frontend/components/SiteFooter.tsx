@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function SiteFooter() {
   return (
@@ -12,9 +13,16 @@ export function SiteFooter() {
     href="/"
     className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight text-brand"
   >
-    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-lg font-extrabold text-white">
+    {/* <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-lg font-extrabold text-white">
       S
-    </span>
+    </span> */}
+    <Image
+  src="/images/logo.png"
+  alt="ShopSphere"
+  width={42}
+  height={42}
+  className="h-10 w-10 object-contain"
+/>
     ShopSphere
   </Link>
 
@@ -165,9 +173,16 @@ export function SiteFooter() {
     href="/"
     className="inline-flex items-center gap-2 font-bold text-brand"
   >
-    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-extrabold text-white">
+    {/* <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-extrabold text-white">
       S
-    </span>
+    </span> */}
+    <Image
+  src="/images/logo.png"
+  alt="ShopSphere"
+  width={30}
+  height={30}
+  className="h-7 w-7 object-contain"
+/>
     ShopSphere
   </Link>
 
