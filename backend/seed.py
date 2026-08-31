@@ -1082,13 +1082,148 @@ def seed_products(
     categories: dict[str, Category],
     brands: dict[str, Brand],
 ) -> None:
+    # for spec in PRODUCTS:
+    #     slug = slugify(spec["name"])
+
+    #     category_name = PRODUCT_CATEGORY_MAP.get(
+    #         spec["name"],
+    #         spec["category"],
+    #     )
+
+    #     existing = (
+    #         db.query(Product)
+    #         .filter(Product.slug == slug)
+    #         .first()
+    #     )
+
+    #     if existing:
+    #         existing.category_id = categories[category_name].id
+    #         db.add(existing)
+    #         db.commit()
+
+    #         print(
+    #             f"  [update] product '{spec['name']}' "
+    #             f"→ category '{category_name}'"
+    #         )
+    #         continue
+
+
+    PRODUCT_SUBCATEGORY_MAP = {
+    "511 Slim Fit Jeans": "jeans",
+    "Regular Fit Oxford Shirt": "shirts",
+    "Slim Fit Chino Trousers": "casual-trousers",
+    "Airism Crew Neck Tee": "t-shirts",
+    "Dri-FIT Training Tee": "active-t-shirts",
+
+    "Air Runner Sneakers": "sneakers",
+    "Ultraboost Running Shoes": "sports-shoes",
+    "Cloud Cushion Slides": "sandals-floaters",
+    "Classic Leather Sneakers": "casual-shoes",
+    "Trek Leather Boots": "boots",
+
+    "Bifold Leather Wallet": "wallets",
+    "Reversible Leather Belt": "belts",
+    "Ribbed Wool Beanie": "caps-hats",
+    "Leather Messenger Bag": "bags-backpacks",
+
+    "Gen 6 Smartwatch": "watches",
+    "Grant Chronograph Watch": "watches",
+    "Townsman Leather Watch": "watches",
+
+    "Aviator Classic Sunglasses": "sunglasses",
+    "Wayfarer Sunglasses": "sunglasses",
+    "Clubmaster Sunglasses": "sunglasses",
+
+    "HeatGear Compression Tee": "active-t-shirts",
+    "Dri-FIT Running Shorts": "track-pants-shorts",
+    "Techfit Training Tights": "track-pants-shorts",
+    "Training Tank Top": "active-t-shirts",
+    "CrossFit Training Shorts": "track-pants-shorts",
+
+    "Nehru Jacket": "jackets",
+    "Ultra Light Down Puffer Jacket": "jackets",
+    "Wool Blend Overcoat": "jackets",
+    "Cable Knit Sweater": "sweaters",
+    "Fleece Zip Hoodie": "sweatshirts",
+    "Sherpa Trucker Jacket": "jackets",
+
+    "Airism Boxer Briefs (3-Pack)": "innerwear",
+    "Cotton Lounge Pants": "casual-trousers",
+    "Boxerjock Briefs (2-Pack)": "innerwear",
+
+    "Satin Wrap Midi Dress": "dresses",
+    "Ribbed Knit Bodysuit": "tops",
+    "Ultra Light Down Vest": "jackets",
+    "501 High Rise Jeans": "jeans",
+    "Tailored Single-Breasted Blazer": "jackets",
+
+    "Curb Chain Bracelet": "jewellery",
+    "Printed Silk Scarf": "jewellery",
+
+    "Everyday Structured Tote Bag": "handbags",
+    "Canvas Travel Backpack": "handbags",
+    "Quilted Crossbody Bag": "handbags",
+    "Mini Shoulder Bag": "handbags",
+
+    "Neutra Minimalist Watch": "watches",
+    "Carlie Rose Gold Watch": "watches",
+
+    "Round Metal Sunglasses": "sunglasses",
+    "Erika Sunglasses": "sunglasses",
+
+    "Embroidered Kurta Set": "kurtas",
+    "Printed Anarkali Dress": "dresses",
+    "Linen Kurta": "kurtas",
+    "Bandhani Print Dupatta Set": "kurtas",
+
+    "Ribbed Cami & Shorts Set": "tops",
+    "Seamless Sports Bra": "tops",
+
+    "Cotton Graphic Print Tee": "t-shirts",
+    "Fleece Zip-Up Hoodie": "sweatshirts",
+    "Junior Track Suit Set": "sportswear",
+    "Denim Dungaree Overalls": "dresses",
+    "Junior Running Shoes": "sports-shoes",
+}
+
     for spec in PRODUCTS:
-        slug = slugify(spec["name"])
+        product_name = spec["name"]
+
+        slug = slugify(product_name)
+
+        # --------------------------------------------------------
+        # Get parent category
+        # --------------------------------------------------------
 
         category_name = PRODUCT_CATEGORY_MAP.get(
-            spec["name"],
+            product_name,
             spec["category"],
         )
+
+        if category_name not in categories:
+            raise KeyError(
+                f"Category '{category_name}' does not exist "
+                f"for product '{product_name}'."
+            )
+
+        # --------------------------------------------------------
+        # Get subcategory
+        # --------------------------------------------------------
+
+        subcategory = PRODUCT_SUBCATEGORY_MAP.get(
+            product_name
+        )
+
+        if not subcategory:
+            raise KeyError(
+                f"No subcategory defined for product "
+                f"'{product_name}'. Add it to "
+                f"PRODUCT_SUBCATEGORY_MAP."
+            )
+
+        # --------------------------------------------------------
+        # Find existing product
+        # --------------------------------------------------------
 
         existing = (
             db.query(Product)
@@ -1096,83 +1231,119 @@ def seed_products(
             .first()
         )
 
+        # ========================================================
+        # UPDATE EXISTING PRODUCT
+        # ========================================================
+
         if existing:
-            existing.category_id = categories[category_name].id
+            existing.category_id = categories[
+                category_name
+            ].id
+
+            # THIS WAS MISSING
+            existing.subcategory = subcategory
+
+            existing.brand_id = brands[
+                spec["brand"]
+            ].id
+
+            existing.description = spec[
+                "description"
+            ]
+
+            existing.base_price = spec[
+                "base_price"
+            ]
+
+            existing.discount_percentage = spec[
+                "discount_percentage"
+            ]
+
+            existing.status = ProductStatus.ACTIVE
+
+            existing.is_featured = spec[
+                "is_featured"
+            ]
+
+            existing.is_trending = False
+
             db.add(existing)
             db.commit()
 
             print(
-                f"  [update] product '{spec['name']}' "
-                f"→ category '{category_name}'"
+                f"  [update] product '{product_name}' "
+                f"→ category '{category_name}' "
+                f"→ subcategory '{subcategory}'"
             )
+
             continue
 
-        product = Product(
-            name=spec["name"],
-            slug=slug,
-            description=spec["description"],
-            category_id=categories[category_name].id,
-            brand_id=brands[spec["brand"]].id,
-            base_price=spec["base_price"],
-            discount_percentage=spec["discount_percentage"],
-            gst_percentage=Decimal("12.00"),
-            status=ProductStatus.ACTIVE,
-            is_featured=spec["is_featured"],
-            is_trending=False,
-        )
-
-        product.variants = [
-            ProductVariant(
-                sku=v["sku"],
-                size=v["size"],
-                color=v["color"],
-                stock_quantity=v["stock_quantity"],
+            product = Product(
+                name=spec["name"],
+                slug=slug,
+                description=spec["description"],
+                category_id=categories[category_name].id,
+                brand_id=brands[spec["brand"]].id,
+                base_price=spec["base_price"],
+                discount_percentage=spec["discount_percentage"],
+                gst_percentage=Decimal("12.00"),
+                status=ProductStatus.ACTIVE,
+                is_featured=spec["is_featured"],
+                is_trending=False,
             )
-            for v in spec["variants"]
-        ]
 
-        db.add(product)
-        db.commit()
-        db.refresh(product)
+            product.variants = [
+                ProductVariant(
+                    sku=v["sku"],
+                    size=v["size"],
+                    color=v["color"],
+                    stock_quantity=v["stock_quantity"],
+                )
+                for v in spec["variants"]
+            ]
 
-        db.add(
-            ProductImage(
-                product_id=product.id,
-                image_url=_generate_placeholder_image(
-                    product.id,
-                    slug,
-                    spec["name"],
-                    spec["brand"],
-                    spec["category"],
-                    "-1",
-                ),
-                is_primary=True,
-                display_order=0,
+            db.add(product)
+            db.commit()
+            db.refresh(product)
+
+            db.add(
+                ProductImage(
+                    product_id=product.id,
+                    image_url=_generate_placeholder_image(
+                        product.id,
+                        slug,
+                        spec["name"],
+                        spec["brand"],
+                        spec["category"],
+                        "-1",
+                    ),
+                    is_primary=True,
+                    display_order=0,
+                )
             )
-        )
 
-        db.add(
-            ProductImage(
-                product_id=product.id,
-                image_url=_generate_placeholder_image(
-                    product.id,
-                    slug,
-                    spec["name"],
-                    spec["brand"],
-                    spec["category"],
-                    "-2",
-                ),
-                is_primary=False,
-                display_order=1,
+            db.add(
+                ProductImage(
+                    product_id=product.id,
+                    image_url=_generate_placeholder_image(
+                        product.id,
+                        slug,
+                        spec["name"],
+                        spec["brand"],
+                        spec["category"],
+                        "-2",
+                    ),
+                    is_primary=False,
+                    display_order=1,
+                )
             )
-        )
 
-        db.commit()
+            db.commit()
 
-        print(
-            f"  [ok] created product: {spec['name']} "
-            f"({len(spec['variants'])} variant(s), 2 image(s))"
-        )
+            print(
+                f"  [ok] created product: {spec['name']} "
+                f"({len(spec['variants'])} variant(s), 2 image(s))"
+            )
 
 def seed_coupons(db) -> None:
     """Optional, per audit item #3's brief — a couple of realistic coupons
