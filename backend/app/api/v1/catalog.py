@@ -156,6 +156,7 @@ def list_products(
             selectinload(Product.category),
             selectinload(Product.brand),
             selectinload(Product.images),
+            selectinload(Product.variants),
         )
     )
 

@@ -40,6 +40,7 @@ class WishlistProductOut(BaseModel):
     base_price: Decimal
     discount_percentage: Decimal
     primary_image_url: str | None = None
+    total_stock: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -9,6 +9,7 @@ export interface WishlistProduct {
   base_price: string;
   discount_percentage: string;
   primary_image_url: string | null;
+  total_stock: number;
 }
 
 export interface WishlistItem {

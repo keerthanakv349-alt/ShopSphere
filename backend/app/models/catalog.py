@@ -249,6 +249,16 @@ class Product(Base):
 
         return (primary or self.images[0]).image_url
 
+    @property
+    def total_stock(self) -> int:
+        """
+        Sum of stock_quantity across every variant.
+
+        Used by product cards/listings to show "Only N left" or
+        "Out of stock" without the frontend needing the full variant list.
+        """
+        return sum(v.stock_quantity for v in self.variants)
+
 
 class ProductVariant(Base):
     __tablename__ = "product_variants"

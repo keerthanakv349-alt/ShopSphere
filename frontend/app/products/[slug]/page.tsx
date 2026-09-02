@@ -11,6 +11,7 @@ import { addCartItem } from "@/lib/cart";
 import { fetchProductBySlug } from "@/lib/catalog";
 import { getMediaUrl } from "@/lib/media";
 import { calculateDiscountedPrice, formatINR } from "@/lib/price";
+import { getStockLabel } from "@/lib/stock";
 import { useAuthStore } from "@/lib/auth-store";
 
 import {
@@ -142,6 +143,7 @@ export default function ProductDetailPage() {
       brand: product.brand,
       primary_image_url:
         product.images[0]?.image_url ?? null,
+      total_stock: product.total_stock,
     });
 
     // Runs once whenever a different product is loaded.
@@ -250,6 +252,36 @@ export default function ProductDetailPage() {
       product.base_price,
     product.discount_percentage
   );
+
+  /*
+   * ---------------------------------------------------------
+   * PER-OPTION STOCK
+   *
+   * A size/color button can have every matching variant sold out
+   * while other combinations still have stock — flag those specific
+   * buttons instead of only warning after a variant is fully picked.
+   * ---------------------------------------------------------
+   */
+
+  function stockForSize(size: string): number {
+    return currentProduct.variants
+      .filter(
+        (v) =>
+          v.size === size &&
+          (colors.length === 0 || !selectedColor || v.color === selectedColor)
+      )
+      .reduce((sum, v) => sum + v.stock_quantity, 0);
+  }
+
+  function stockForColor(color: string): number {
+    return currentProduct.variants
+      .filter(
+        (v) =>
+          v.color === color &&
+          (sizes.length === 0 || !selectedSize || v.size === selectedSize)
+      )
+      .reduce((sum, v) => sum + v.stock_quantity, 0);
+  }
 
   /*
    * ---------------------------------------------------------
@@ -445,21 +477,33 @@ export default function ProductDetailPage() {
 
               <div className="flex flex-wrap gap-2">
 
-                {colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() =>
-                      setSelectedColor(color)
-                    }
-                    className={`rounded-lg border px-3 py-1.5 text-body-md ${
-                      selectedColor === color
-                        ? "border-brand text-brand"
-                        : "border-outline-variant dark:border-neutral-700"
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
+                {colors.map((color) => {
+                  const outOfStock = stockForColor(color) === 0;
+                  return (
+                    <button
+                      key={color}
+                      onClick={() =>
+                        setSelectedColor(color)
+                      }
+                      title={
+                        outOfStock
+                          ? `${color} — out of stock`
+                          : undefined
+                      }
+                      className={`rounded-lg border px-3 py-1.5 text-body-md ${
+                        selectedColor === color
+                          ? "border-brand text-brand"
+                          : "border-outline-variant dark:border-neutral-700"
+                      } ${
+                        outOfStock
+                          ? "text-on-surface-variant opacity-50 line-through"
+                          : ""
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  );
+                })}
 
               </div>
 
@@ -483,21 +527,33 @@ export default function ProductDetailPage() {
 
               <div className="flex flex-wrap gap-2">
 
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() =>
-                      setSelectedSize(size)
-                    }
-                    className={`rounded-lg border px-3 py-1.5 text-body-md ${
-                      selectedSize === size
-                        ? "border-brand font-medium text-brand"
-                        : "border-outline-variant dark:border-neutral-700"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {sizes.map((size) => {
+                  const outOfStock = stockForSize(size) === 0;
+                  return (
+                    <button
+                      key={size}
+                      onClick={() =>
+                        setSelectedSize(size)
+                      }
+                      title={
+                        outOfStock
+                          ? `${size} — out of stock`
+                          : undefined
+                      }
+                      className={`rounded-lg border px-3 py-1.5 text-body-md ${
+                        selectedSize === size
+                          ? "border-brand font-medium text-brand"
+                          : "border-outline-variant dark:border-neutral-700"
+                      } ${
+                        outOfStock
+                          ? "text-on-surface-variant opacity-50 line-through"
+                          : ""
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
 
               </div>
 
@@ -509,10 +565,17 @@ export default function ProductDetailPage() {
           ================================================= */}
 
           {selectedVariant && (
-            <p className="mt-3 text-label-sm text-on-surface-variant">
-              {selectedVariant.stock_quantity > 0
-                ? `${selectedVariant.stock_quantity} in stock`
-                : "Out of stock"}
+            <p
+              className={`mt-3 text-label-sm font-medium ${
+                selectedVariant.stock_quantity === 0
+                  ? "text-on-surface-variant"
+                  : selectedVariant.stock_quantity <= 5
+                    ? "text-red-600"
+                    : "text-success"
+              }`}
+            >
+              {getStockLabel(selectedVariant.stock_quantity) ??
+                `${selectedVariant.stock_quantity} in stock`}
             </p>
           )}
 
@@ -527,13 +590,17 @@ export default function ProductDetailPage() {
             <button
               onClick={handleAddToCart}
               disabled={
-                addToCartMutation.isPending
+                addToCartMutation.isPending ||
+                (!!selectedVariant &&
+                  selectedVariant.stock_quantity === 0)
               }
-              className="flex-1 rounded-lg bg-brand px-4 py-3 text-body-md font-bold uppercase tracking-wide text-white transition hover:bg-brand-dark disabled:opacity-60"
+              className="flex-1 rounded-lg bg-brand px-4 py-3 text-body-md font-bold uppercase tracking-wide text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
               {addToCartMutation.isPending
                 ? "Adding…"
-                : "Add to Bag"}
+                : selectedVariant?.stock_quantity === 0
+                  ? "Out of Stock"
+                  : "Add to Bag"}
             </button>
 
             {/* WISHLIST */}

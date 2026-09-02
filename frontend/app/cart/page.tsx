@@ -11,6 +11,7 @@ import { getMediaUrl } from "@/lib/media";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { ErrorState } from "@/components/ErrorState";
 import { formatINR } from "@/lib/price";
+import { getStockLabel } from "@/lib/stock";
 
 function CartContent() {
   const router = useRouter();
@@ -98,19 +99,23 @@ function CartContent() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <select
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateQtyMutation.mutate({ itemId: item.id, quantity: Number(e.target.value) })
-                      }
-                      className="rounded border border-outline-variant px-2 py-1 text-body-md dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                      {Array.from({ length: Math.min(item.stock_quantity, 10) }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>
-                          Qty {n}
-                        </option>
-                      ))}
-                    </select>
+                    {item.stock_quantity === 0 ? (
+                      <span className="text-label-sm font-medium text-red-600">Out of stock</span>
+                    ) : (
+                      <select
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateQtyMutation.mutate({ itemId: item.id, quantity: Number(e.target.value) })
+                        }
+                        className="rounded border border-outline-variant px-2 py-1 text-body-md dark:border-neutral-700 dark:bg-neutral-900"
+                      >
+                        {Array.from({ length: Math.min(item.stock_quantity, 10) }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            Qty {n}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       onClick={() => removeItemMutation.mutate(item.id)}
                       className="text-label-sm text-on-surface-variant underline hover:text-brand"
@@ -120,6 +125,11 @@ function CartContent() {
                   </div>
                   <p className="text-body-md font-bold text-on-surface">{formatINR(parseFloat(item.line_total))}</p>
                 </div>
+                {item.stock_quantity > 0 && getStockLabel(item.stock_quantity) && (
+                  <p className="mt-1 text-label-sm font-medium text-red-600">
+                    {getStockLabel(item.stock_quantity)} — order soon
+                  </p>
+                )}
               </div>
             </div>
           ))}

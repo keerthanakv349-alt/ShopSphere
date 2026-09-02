@@ -363,6 +363,10 @@ class ProductOut(BaseModel):
     # Primary image used by product cards.
     primary_image_url: str | None = None
 
+    # Sum of stock_quantity across all variants — powers "Only N left" /
+    # "Out of stock" badges on cards without shipping the full variant list.
+    total_stock: int = 0
+
 
 # ============================================================
 # PRODUCT DETAIL OUTPUT
@@ -414,6 +418,9 @@ class ProductDetailOut(BaseModel):
 
     # Product images
     images: list[ProductImageOut]
+
+    # Sum of stock_quantity across all variants.
+    total_stock: int = 0
 
 
 # ============================================================

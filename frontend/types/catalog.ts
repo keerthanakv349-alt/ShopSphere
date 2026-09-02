@@ -45,6 +45,7 @@ export interface Product {
   category: Category;
   brand: Brand;
   primary_image_url: string | null;
+  total_stock: number;
 }
 
 export interface ProductDetail extends Omit<Product, "primary_image_url"> {

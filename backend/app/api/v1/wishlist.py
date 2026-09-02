@@ -49,7 +49,8 @@ def list_wishlist(
     return (
         db.query(WishlistItem)
         .options(
-            joinedload(WishlistItem.product).joinedload(Product.images)
+            joinedload(WishlistItem.product).joinedload(Product.images),
+            joinedload(WishlistItem.product).joinedload(Product.variants),
         )
         .filter(WishlistItem.user_id == current_user.id)
         .order_by(WishlistItem.created_at.desc())
@@ -111,7 +112,8 @@ def add_to_wishlist(
     return (
         db.query(WishlistItem)
         .options(
-            joinedload(WishlistItem.product).joinedload(Product.images)
+            joinedload(WishlistItem.product).joinedload(Product.images),
+            joinedload(WishlistItem.product).joinedload(Product.variants),
         )
         .filter(WishlistItem.id == wishlist_item.id)
         .first()

@@ -13,7 +13,82 @@ import {
 
 import { fetchCart } from "@/lib/cart";
 import { useAuthStore } from "@/lib/auth-store";
+import { getMediaUrl } from "@/lib/media";
 import { NotificationBell } from "./NotificationBell";
+
+/*
+ * ============================================================
+ * NAV IMAGES
+ * ============================================================
+ *
+ * The MEN/WOMEN/KIDS tabs (and most of their sections) reuse a real
+ * product photo already in the catalog. HOME/BEAUTY/GENZ/STUDIO — and
+ * a few sections like Women's Footwear or Kids' Toys — have zero
+ * products in the catalog at all, so there's no product photo to
+ * borrow; those instead point at /media/categories/<key>.jpg, real
+ * stock photos downloaded once by backend/fetch_nav_images.py.
+ */
+
+const CATEGORY_TAB_IMAGES: Record<string, string> = {
+  MEN: "/media/products/f083e4d0-3053-4a71-b50a-577f60fb8270/ultra-light-down-puffer-jacket-1.jpg",
+  WOMEN: "/media/products/ef0b7ef9-68bb-41b4-adb5-c7fba8497cd8/satin-wrap-midi-dress-1.jpg",
+  KIDS: "/media/products/10b0a4db-b8ec-4b6e-bf87-9fb18c027d2f/junior-track-suit-set-1.jpg",
+  HOME: "/media/categories/tab-home.jpg",
+  BEAUTY: "/media/categories/tab-beauty.jpg",
+  GENZ: "/media/categories/tab-genz.jpg",
+  STUDIO: "/media/categories/tab-studio.jpg",
+};
+
+const SECTION_IMAGES: Record<string, Record<string, string>> = {
+  MEN: {
+    TOPWEAR: "/media/products/b1945348-f80a-4c91-a473-419d35ae2329/regular-fit-oxford-shirt-1.jpg",
+    BOTTOMWEAR: "/media/products/8b616c19-5f67-4500-9f73-0bc2a2baee6f/511-slim-fit-jeans-1.jpg",
+    FOOTWEAR: "/media/products/b9d1e600-db54-4e95-bc08-4ee2fcf78e94/air-runner-sneakers-1.jpg",
+    "SPORTS & ACTIVE WEAR": "/media/products/033a5002-cd29-4b6f-ae66-1e03523dbd8d/dri-fit-training-tee-1.jpg",
+    "FASHION ACCESSORIES": "/media/products/fb7d9c89-bc5a-4dd3-93aa-ca33f2774974/aviator-classic-sunglasses-1.jpg",
+  },
+  WOMEN: {
+    TOPWEAR: "/media/products/8e50fca2-f999-4076-a468-42b9ce1568d1/tailored-single-breasted-blazer-1.jpg",
+    BOTTOMWEAR: "/media/products/5ddbdce6-839e-4d92-b324-19c525cebe41/501-high-rise-jeans-1.jpg",
+    "INDIAN & FUSION WEAR": "/media/products/8fa31b26-ede6-4c45-b78b-e99ab99fb5de/embroidered-kurta-set-1.jpg",
+    FOOTWEAR: "/media/categories/women-footwear.jpg",
+    "FASHION ACCESSORIES": "/media/products/b605a927-759a-4e87-916d-c143c2445e39/round-metal-sunglasses-1.jpg",
+  },
+  KIDS: {
+    BOYS: "/media/products/3acbe051-1248-4677-9a43-e2dbef5fe787/cotton-graphic-print-tee-1.jpg",
+    GIRLS: "/media/products/c77f9d88-51fe-4924-b792-67fc4326220e/denim-dungaree-overalls-1.jpg",
+    FOOTWEAR: "/media/products/71db77aa-e360-45ad-912f-afca6b395d78/junior-running-shoes-1.jpg",
+    "TOYS & GAMES": "/media/categories/kids-toys-games.jpg",
+    ACCESSORIES: "/media/categories/kids-accessories.jpg",
+  },
+  HOME: {
+    "HOME DECOR": "/media/categories/home-home-decor.jpg",
+    BEDDING: "/media/categories/home-bedding.jpg",
+    "BATH & FLOORING": "/media/categories/home-bath-flooring.jpg",
+    KITCHEN: "/media/categories/home-kitchen.jpg",
+    FURNITURE: "/media/categories/home-furniture.jpg",
+  },
+  BEAUTY: {
+    MAKEUP: "/media/categories/beauty-makeup.jpg",
+    SKINCARE: "/media/categories/beauty-skincare.jpg",
+    HAIRCARE: "/media/categories/beauty-haircare.jpg",
+    FRAGRANCES: "/media/categories/beauty-fragrances.jpg",
+    "BATH & BODY": "/media/categories/beauty-bath-body.jpg",
+  },
+  GENZ: {
+    TRENDING: "/media/categories/genz-trending.jpg",
+    STREETWEAR: "/media/categories/genz-streetwear.jpg",
+    FOOTWEAR: "/media/categories/genz-footwear.jpg",
+    ACCESSORIES: "/media/categories/genz-accessories.jpg",
+    "STYLE PICKS": "/media/categories/genz-style-picks.jpg",
+  },
+  STUDIO: {
+    "FASHION STORIES": "/media/categories/studio-fashion-stories.jpg",
+    "TRENDING LOOKS": "/media/categories/studio-trending-looks.jpg",
+    "STYLE GUIDE": "/media/categories/studio-style-guide.jpg",
+    "NEW ARRIVALS": "/media/categories/studio-new-arrivals.jpg",
+  },
+};
 
 export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -744,8 +819,8 @@ export function SiteHeader() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden flex-1 items-center justify-end gap-6 md:flex">
-          <div className="flex items-center gap-6 text-sm font-semibold">
+        <nav className="hidden flex-1 items-center justify-end gap-4 md:flex">
+          <div className="flex items-center gap-3 text-sm font-semibold xl:gap-4">
             {Object.keys(categories).map((category) => (
               <div
                 key={category}
@@ -758,12 +833,21 @@ export function SiteHeader() {
                   href={`/products?category=${getCategorySlug(
                     category
                   )}`}
-                  className={`hover:text-brand ${
+                  className={`flex items-center gap-1 whitespace-nowrap hover:text-brand ${
                     activeCategory === category
                       ? "text-brand"
                       : ""
                   }`}
                 >
+                  <span className="relative hidden h-4 w-4 shrink-0 overflow-hidden rounded-full border border-outline-variant dark:border-neutral-700 xl:inline-block">
+                    <Image
+                      src={getMediaUrl(CATEGORY_TAB_IMAGES[category])!}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="16px"
+                    />
+                  </span>
                   {category}
                 </Link>
               </div>
@@ -771,7 +855,7 @@ export function SiteHeader() {
           </div>
 
           {/* Search */}
-          <div className="relative w-72 lg:w-80">
+          <div className="relative w-36 xl:w-64">
             <FiSearch
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"
@@ -785,7 +869,7 @@ export function SiteHeader() {
           </div>
 
           {/* User actions */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <Link
               href="/profile"
               className="flex flex-col items-center gap-1 text-xs hover:text-brand"
@@ -841,6 +925,18 @@ export function SiteHeader() {
                   ]
                 ).map(([section, items]) => (
                   <div key={section}>
+                    {SECTION_IMAGES[activeCategory]?.[section] && (
+                      <div className="relative mb-3 aspect-[4/3] w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900">
+                        <Image
+                          src={getMediaUrl(SECTION_IMAGES[activeCategory][section])!}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="180px"
+                        />
+                      </div>
+                    )}
+
                     <h3 className="mb-3 text-xs font-bold text-brand">
                       {section}
                     </h3>

@@ -53,7 +53,12 @@ def get_related_products(slug: str, db: Session = Depends(get_db), limit: int = 
             Product.id != product.id,
             Product.status == ProductStatus.ACTIVE,
         )
-        .options(selectinload(Product.category), selectinload(Product.brand), selectinload(Product.images))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.brand),
+            selectinload(Product.images),
+            selectinload(Product.variants),
+        )
         .order_by(Product.is_featured.desc(), Product.created_at.desc())
         .limit(limit)
     )
@@ -87,7 +92,12 @@ def get_frequently_bought_together(
     products = (
         db.query(Product)
         .filter(Product.id.in_(co_occurring_ids), Product.status == ProductStatus.ACTIVE)
-        .options(selectinload(Product.category), selectinload(Product.brand), selectinload(Product.images))
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.brand),
+            selectinload(Product.images),
+            selectinload(Product.variants),
+        )
         .all()
     )
     # Preserve the co-occurrence-ranked order — the DB IN-clause doesn't

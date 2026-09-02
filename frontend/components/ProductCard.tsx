@@ -4,12 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { getMediaUrl } from "@/lib/media";
 import { calculateDiscountedPrice, formatINR } from "@/lib/price";
+import { getStockLabel } from "@/lib/stock";
 import type { Product } from "@/types/catalog";
 
 export function ProductCard({ product }: { product: Product }) {
   const discounted = calculateDiscountedPrice(product.base_price, product.discount_percentage);
   const hasDiscount = parseFloat(product.discount_percentage) > 0;
   const imageUrl = getMediaUrl(product.primary_image_url);
+  // Older localStorage-cached "recently viewed" entries may predate this
+  // field — treat missing stock info as healthy rather than crashing.
+  const stockLabel = product.total_stock != null ? getStockLabel(product.total_stock) : null;
+  const isOutOfStock = stockLabel === "Out of stock";
 
   return (
     <Link
@@ -25,7 +30,7 @@ export function ProductCard({ product }: { product: Product }) {
             src={imageUrl}
             alt={product.name}
             fill
-            className="object-cover transition group-hover:scale-105"
+            className={`object-cover transition group-hover:scale-105 ${isOutOfStock ? "opacity-50 grayscale" : ""}`}
             sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
@@ -38,9 +43,14 @@ export function ProductCard({ product }: { product: Product }) {
             New
           </span>
         )}
-        {hasDiscount && (
+        {hasDiscount && !isOutOfStock && (
           <span className="absolute right-2 top-2 rounded bg-success/10 px-1.5 py-0.5 text-label-bold text-success">
             -{parseFloat(product.discount_percentage)}%
+          </span>
+        )}
+        {isOutOfStock && (
+          <span className="absolute right-2 top-2 rounded bg-neutral-900/80 px-1.5 py-0.5 text-label-bold text-white">
+            Out of Stock
           </span>
         )}
       </div>
@@ -55,6 +65,11 @@ export function ProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>
+        {stockLabel && (
+          <p className={`mt-1 text-label-sm font-medium ${isOutOfStock ? "text-on-surface-variant" : "text-red-600"}`}>
+            {stockLabel}
+          </p>
+        )}
       </div>
     </Link>
   );
