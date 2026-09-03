@@ -55,16 +55,21 @@ Admin catalog endpoints — everything here requires ADMIN or SUPER_ADMIN role.
    simpler validation, and the admin can add/remove/reorder images later
    without resubmitting the whole product.
 """
+import csv
+import io
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.v1.deps import require_role
+from app.core.audit import log_admin_action
 from app.core.images import delete_product_image, save_product_image
 from app.db.session import get_db
-from app.models.catalog import Brand, Category, Product, ProductImage, ProductVariant
+from app.models.catalog import Brand, Category, Product, ProductImage, ProductStatus, ProductVariant
 from app.models.user import User, UserRole
 from app.schemas.catalog import (
     BrandCreate,
@@ -224,7 +229,9 @@ def _load_product_or_404(db: Session, product_id: uuid.UUID) -> Product:
 
 
 @router.post("/products", response_model=ProductDetailOut, status_code=status.HTTP_201_CREATED)
-def create_product(payload: ProductCreate, db: Session = Depends(get_db), _: User = Depends(admin_only)):
+def create_product(
+    payload: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(admin_only)
+):
     if db.get(Category, payload.category_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
     if db.get(Brand, payload.brand_id) is None:
@@ -270,6 +277,17 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), _: Use
     ]
 
     db.add(product)
+    db.flush()
+
+    log_admin_action(
+        db,
+        current_user,
+        action="create",
+        entity_type="product",
+        entity_id=str(product.id),
+        description=f"Created product '{product.name}'",
+    )
+
     db.commit()
 
     return _load_product_or_404(db, product.id)
@@ -317,7 +335,7 @@ def update_product(
     product_id: uuid.UUID,
     payload: ProductUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     product = _load_product_or_404(db, product_id)
 
@@ -327,24 +345,49 @@ def update_product(
     if "brand_id" in update_data and db.get(Brand, update_data["brand_id"]) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Brand not found")
 
+    price_note = ""
+    if "base_price" in update_data and update_data["base_price"] != product.base_price:
+        price_note = f" (price ₹{product.base_price} → ₹{update_data['base_price']})"
+
     for field, value in update_data.items():
         setattr(product, field, value)
+
+    if update_data:
+        log_admin_action(
+            db,
+            current_user,
+            action="update",
+            entity_type="product",
+            entity_id=str(product.id),
+            description=f"Updated product '{product.name}'{price_note} ({', '.join(update_data.keys())})",
+        )
 
     db.commit()
     return _load_product_or_404(db, product_id)
 
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(product_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(admin_only)):
+def delete_product(
+    product_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(admin_only)
+):
     # SOFT delete (status -> inactive), not a row deletion. Once a product
     # has ever been ordered, hard-deleting it would orphan OrderItem rows
     # that reference it (Phase 3) and destroy sales history/analytics.
     # This is standard e-commerce practice — "delete" in the admin UI
     # almost never means DROP the row.
     product = _load_product_or_404(db, product_id)
-    from app.models.catalog import ProductStatus
 
     product.status = ProductStatus.INACTIVE
+
+    log_admin_action(
+        db,
+        current_user,
+        action="delete",
+        entity_type="product",
+        entity_id=str(product.id),
+        description=f"Deactivated product '{product.name}'",
+    )
+
     db.commit()
     return None
 
@@ -473,3 +516,304 @@ def update_variant(
     db.commit()
     db.refresh(variant)
     return variant
+
+
+# --- Bulk CSV import/export ---
+#
+# WHY THESE PATHS ARE "/products-export" / "/products-import" RATHER THAN
+# "/products/export" / "/products/import":
+# FastAPI/Starlette matches routes in registration order. "/products/export"
+# would structurally match the existing "/products/{product_id}" route
+# registered above it (with product_id="export"), which fails UUID parsing
+# and 422s before ever reaching this handler. A sibling path with no shared
+# prefix segment sidesteps that ordering trap entirely, rather than relying
+# on "just register these routes first" (fragile — the next person to add a
+# route above this file's midpoint could reintroduce the collision).
+#
+# CSV SHAPE: one row per VARIANT, with the parent product's fields repeated
+# on every row (a standard "flat" export shape most spreadsheet tools and
+# other store platforms already produce/consume). Re-importing an exported
+# file is idempotent: products are matched by product_slug, variants by
+# variant_sku, so running the same file twice updates in place rather than
+# duplicating rows.
+_CSV_COLUMNS = [
+    "product_slug",
+    "product_name",
+    "category_slug",
+    "subcategory",
+    "brand_slug",
+    "base_price",
+    "discount_percentage",
+    "gst_percentage",
+    "status",
+    "is_featured",
+    "is_trending",
+    "description",
+    "variant_sku",
+    "variant_size",
+    "variant_color",
+    "variant_stock_quantity",
+    "variant_price_override",
+]
+
+
+@router.get("/products-export")
+def export_products_csv(db: Session = Depends(get_db), _: User = Depends(admin_only)):
+    products = (
+        db.execute(
+            select(Product).options(
+                selectinload(Product.variants),
+                selectinload(Product.category),
+                selectinload(Product.brand),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=_CSV_COLUMNS)
+    writer.writeheader()
+
+    for product in products:
+        variants = product.variants or [None]
+        for variant in variants:
+            writer.writerow(
+                {
+                    "product_slug": product.slug,
+                    "product_name": product.name,
+                    "category_slug": product.category.slug,
+                    "subcategory": product.subcategory or "",
+                    "brand_slug": product.brand.slug,
+                    "base_price": product.base_price,
+                    "discount_percentage": product.discount_percentage,
+                    "gst_percentage": product.gst_percentage,
+                    "status": product.status.value,
+                    "is_featured": product.is_featured,
+                    "is_trending": product.is_trending,
+                    "description": (product.description or "").replace("\n", " ").replace("\r", " "),
+                    "variant_sku": variant.sku if variant else "",
+                    "variant_size": (variant.size or "") if variant else "",
+                    "variant_color": (variant.color or "") if variant else "",
+                    "variant_stock_quantity": variant.stock_quantity if variant else "",
+                    "variant_price_override": (variant.price_override or "") if variant else "",
+                }
+            )
+
+    buffer.seek(0)
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=products.csv"},
+    )
+
+
+def _parse_bool(value: str, default: bool = False) -> bool:
+    if not value or not value.strip():
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "y")
+
+
+def _parse_decimal(value: str, default: Decimal | None = None) -> Decimal | None:
+    if not value or not value.strip():
+        return default
+    return Decimal(value.strip())
+
+
+@router.post("/products-import")
+async def import_products_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_only),
+):
+    raw = (await file.read()).decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(raw))
+
+    missing_columns = [c for c in ("product_slug", "product_name", "variant_sku") if c not in (reader.fieldnames or [])]
+    if missing_columns:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"CSV is missing required column(s): {', '.join(missing_columns)}",
+        )
+
+    # Group rows by product_slug, preserving first-seen order, so every
+    # product is created/updated exactly once even though it may span
+    # several rows (one per variant).
+    rows_by_slug: dict[str, list[tuple[int, dict]]] = {}
+    for line_number, row in enumerate(reader, start=2):  # header is line 1
+        slug = (row.get("product_slug") or "").strip()
+        if not slug:
+            continue
+        rows_by_slug.setdefault(slug, []).append((line_number, row))
+
+    errors: list[dict] = []
+    products_created = 0
+    products_updated = 0
+    variants_created = 0
+    variants_updated = 0
+
+    category_cache: dict[str, Category] = {}
+    brand_cache: dict[str, Brand] = {}
+    # Guards against the same SKU appearing twice in one upload — without
+    # this, both occurrences would look "new" (neither is in the DB yet)
+    # and the second db.add() would crash the whole request with an
+    # IntegrityError at commit time instead of a clean per-row error.
+    seen_skus: set[str] = set()
+
+    for product_slug, rows in rows_by_slug.items():
+        first_line, first_row = rows[0]
+
+        category_slug = (first_row.get("category_slug") or "").strip()
+        brand_slug = (first_row.get("brand_slug") or "").strip()
+
+        category = category_cache.get(category_slug)
+        if category is None:
+            category = db.query(Category).filter(Category.slug == category_slug).first()
+            if category:
+                category_cache[category_slug] = category
+
+        brand = brand_cache.get(brand_slug)
+        if brand is None:
+            brand = db.query(Brand).filter(Brand.slug == brand_slug).first()
+            if brand:
+                brand_cache[brand_slug] = brand
+
+        if category is None:
+            errors.append({"row": first_line, "message": f"Unknown category_slug '{category_slug}'"})
+            continue
+        if brand is None:
+            errors.append({"row": first_line, "message": f"Unknown brand_slug '{brand_slug}'"})
+            continue
+
+        # --- Validate every value for this product group FIRST, as plain
+        # Python, before touching any ORM object. This whole endpoint does
+        # one db.commit() at the very end (so a good product processed
+        # three groups ago doesn't get lost if group #10 has a typo) — a
+        # mid-loop db.rollback() would discard every valid change already
+        # staged in the session, not just this group's. Validating fully
+        # before the first db.add()/setattr() means a bad group can always
+        # be skipped with a plain `continue`, no rollback ever needed.
+        try:
+            product_status = ProductStatus((first_row.get("status") or "active").strip().lower())
+            parsed_product = {
+                "name": (first_row.get("product_name") or product_slug).strip(),
+                "category_id": category.id,
+                "brand_id": brand.id,
+                "subcategory": (first_row.get("subcategory") or "").strip() or None,
+                "base_price": _parse_decimal(first_row.get("base_price"), Decimal("0")),
+                "discount_percentage": _parse_decimal(first_row.get("discount_percentage"), Decimal("0")),
+                "gst_percentage": _parse_decimal(first_row.get("gst_percentage"), Decimal("0")),
+                "status": product_status,
+                "is_featured": _parse_bool(first_row.get("is_featured")),
+                "is_trending": _parse_bool(first_row.get("is_trending")),
+                "description": first_row.get("description") or "",
+            }
+        except (InvalidOperation, ValueError) as exc:
+            errors.append({"row": first_line, "message": f"Could not parse product fields: {exc}"})
+            continue
+
+        # Validate every variant row in this group too, before any mutation.
+        parsed_variants: list[dict] = []
+        for line_number, row in rows:
+            sku = (row.get("variant_sku") or "").strip()
+            if not sku:
+                errors.append({"row": line_number, "message": "Missing variant_sku"})
+                continue
+
+            if sku in seen_skus:
+                errors.append({"row": line_number, "message": f"Duplicate SKU '{sku}' in this file"})
+                continue
+            seen_skus.add(sku)
+
+            try:
+                stock_quantity = int((row.get("variant_stock_quantity") or "0").strip() or "0")
+                price_override = _parse_decimal(row.get("variant_price_override"), None)
+            except (InvalidOperation, ValueError) as exc:
+                errors.append({"row": line_number, "message": f"Could not parse variant fields: {exc}"})
+                continue
+
+            existing_variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first()
+            existing_product_id = existing_variant.product_id if existing_variant else None
+
+            parsed_variants.append(
+                {
+                    "line_number": line_number,
+                    "sku": sku,
+                    "size": (row.get("variant_size") or "").strip() or None,
+                    "color": (row.get("variant_color") or "").strip() or None,
+                    "stock_quantity": stock_quantity,
+                    "price_override": price_override,
+                    "existing_product_id": existing_product_id,
+                }
+            )
+
+        # --- Only now touch the ORM — every value above is known-good. ---
+        product = db.query(Product).filter(Product.slug == product_slug).first()
+        is_new = product is None
+        if is_new:
+            product = Product(slug=product_slug)
+            db.add(product)
+
+        for field, value in parsed_product.items():
+            setattr(product, field, value)
+
+        db.flush()  # assigns product.id for a newly-created row
+
+        if is_new:
+            products_created += 1
+        else:
+            products_updated += 1
+
+        for v in parsed_variants:
+            if v["existing_product_id"] is not None and v["existing_product_id"] != product.id:
+                errors.append(
+                    {
+                        "row": v["line_number"],
+                        "message": f"SKU '{v['sku']}' already belongs to a different product",
+                    }
+                )
+                continue
+
+            if v["existing_product_id"] is None:
+                db.add(
+                    ProductVariant(
+                        product_id=product.id,
+                        sku=v["sku"],
+                        size=v["size"],
+                        color=v["color"],
+                        stock_quantity=v["stock_quantity"],
+                        price_override=v["price_override"],
+                    )
+                )
+                variants_created += 1
+            else:
+                existing_variant = db.query(ProductVariant).filter(ProductVariant.sku == v["sku"]).first()
+                existing_variant.size = v["size"]
+                existing_variant.color = v["color"]
+                existing_variant.stock_quantity = v["stock_quantity"]
+                existing_variant.price_override = v["price_override"]
+                variants_updated += 1
+
+    summary = (
+        f"Imported products CSV: {products_created} product(s) created, "
+        f"{products_updated} updated, {variants_created} variant(s) created, "
+        f"{variants_updated} updated, {len(errors)} row error(s)"
+    )
+    log_admin_action(
+        db,
+        current_user,
+        action="import",
+        entity_type="product",
+        entity_id=None,
+        description=summary,
+    )
+
+    db.commit()
+
+    return {
+        "products_created": products_created,
+        "products_updated": products_updated,
+        "variants_created": variants_created,
+        "variants_updated": variants_updated,
+        "errors": errors,
+    }

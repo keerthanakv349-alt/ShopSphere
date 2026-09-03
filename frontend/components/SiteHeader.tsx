@@ -9,6 +9,7 @@ import {
   FiUser,
   FiHeart,
   FiShoppingBag,
+  FiChevronDown,
 } from "react-icons/fi";
 
 import { fetchCart } from "@/lib/cart";
@@ -93,6 +94,12 @@ const SECTION_IMAGES: Record<string, Record<string, string>> = {
 export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Which category is expanded in the MOBILE accordion — separate from
+  // activeCategory (desktop hover) since the two menus are never open at
+  // the same time and shouldn't affect each other's state.
+  const [expandedMobileCategory, setExpandedMobileCategory] = useState<
+    string | null
+  >(null);
 
   const isAuthenticated = useAuthStore((s) => !!s.tokens);
   const user = useAuthStore((s) => s.user);
@@ -108,6 +115,7 @@ export function SiteHeader() {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+    setExpandedMobileCategory(null);
   };
 
   /*
@@ -819,7 +827,7 @@ export function SiteHeader() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden flex-1 items-center justify-end gap-4 md:flex">
+        <nav className="hidden flex-1 items-center justify-end gap-4 lg:flex">
           <div className="flex items-center gap-3 text-sm font-semibold xl:gap-4">
             {Object.keys(categories).map((category) => (
               <div
@@ -969,7 +977,7 @@ export function SiteHeader() {
         {/* Mobile Menu Button */}
         <button
           type="button"
-          className="rounded-md p-2 text-xl md:hidden"
+          className="rounded-md p-2 text-xl lg:hidden"
           aria-label={
             mobileMenuOpen
               ? "Close menu"
@@ -989,16 +997,127 @@ export function SiteHeader() {
          ===================================================== */}
 
       {mobileMenuOpen && (
-        <div className="border-t border-outline-variant bg-surface px-4 py-4 dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
+        <div className="max-h-[calc(100vh-64px)] overflow-y-auto border-t border-outline-variant bg-surface px-4 py-4 dark:border-neutral-800 dark:bg-neutral-950 lg:hidden">
           <nav className="flex flex-col gap-1 text-body-md">
 
             <Link
               href="/products"
-              className="rounded-md px-3 py-3 hover:bg-brand/10 hover:text-brand"
+              className="rounded-md px-3 py-3 font-medium hover:bg-brand/10 hover:text-brand"
               onClick={closeMobileMenu}
             >
-              Products
+              All Products
             </Link>
+
+            {/* =================================================
+                SHOP BY CATEGORY (accordion)
+            ================================================= */}
+
+            <p className="mt-2 px-3 text-label-sm font-bold uppercase tracking-wide text-on-surface-variant">
+              Shop by Category
+            </p>
+
+            {Object.keys(categories).map((category) => {
+              const isExpanded =
+                expandedMobileCategory === category;
+
+              return (
+                <div
+                  key={category}
+                  className="border-b border-outline-variant last:border-b-0 dark:border-neutral-800"
+                >
+                  <div className="flex items-center">
+                    <Link
+                      href={`/products?category=${getCategorySlug(
+                        category
+                      )}`}
+                      className="flex flex-1 items-center gap-3 rounded-md px-3 py-3 hover:bg-brand/10 hover:text-brand"
+                      onClick={closeMobileMenu}
+                    >
+                      <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-outline-variant dark:border-neutral-700">
+                        <Image
+                          src={getMediaUrl(CATEGORY_TAB_IMAGES[category])!}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="36px"
+                        />
+                      </span>
+                      {category}
+                    </Link>
+
+                    <button
+                      type="button"
+                      aria-label={
+                        isExpanded
+                          ? `Collapse ${category}`
+                          : `Expand ${category}`
+                      }
+                      aria-expanded={isExpanded}
+                      onClick={() =>
+                        setExpandedMobileCategory((current) =>
+                          current === category ? null : category
+                        )
+                      }
+                      className="rounded-md p-3 text-on-surface-variant hover:bg-brand/10 hover:text-brand"
+                    >
+                      <FiChevronDown
+                        size={18}
+                        className={`transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="flex flex-col gap-5 px-3 pb-4 pt-1">
+                      {Object.entries(
+                        categories[
+                          category as keyof typeof categories
+                        ]
+                      ).map(([section, items]) => (
+                        <div key={section}>
+                          <div className="mb-2 flex items-center gap-2">
+                            {SECTION_IMAGES[category]?.[section] && (
+                              <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900">
+                                <Image
+                                  src={getMediaUrl(
+                                    SECTION_IMAGES[category][section]
+                                  )!}
+                                  alt=""
+                                  fill
+                                  className="object-cover"
+                                  sizes="32px"
+                                />
+                              </span>
+                            )}
+
+                            <h4 className="text-xs font-bold text-brand">
+                              {section}
+                            </h4>
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-2 pl-10">
+                            {items.map((item) => (
+                              <Link
+                                key={`${category}-${item}`}
+                                href={getMenuLink(category, item)}
+                                className="text-sm text-neutral-600 hover:text-brand dark:text-neutral-300"
+                                onClick={closeMobileMenu}
+                              >
+                                {item}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="my-2 border-t border-outline-variant dark:border-neutral-800" />
 
             {isAuthenticated ? (
               <>

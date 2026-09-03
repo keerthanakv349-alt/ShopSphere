@@ -97,3 +97,41 @@ class AdminCustomerDetail(BaseModel):
     total_orders: int
     total_spend: Decimal
     orders: list[OrderOut]
+
+
+class SiteSettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    store_name: str
+    support_email: str | None
+    support_phone: str | None
+    currency_code: str
+    default_shipping_charge: Decimal
+    low_stock_threshold: int
+    maintenance_mode: bool
+    updated_at: datetime
+
+
+class SiteSettingsUpdate(BaseModel):
+    """PATCH-style partial update — only fields the admin actually
+    changed are sent, via model_dump(exclude_unset=True)."""
+
+    store_name: str | None = None
+    support_email: EmailStr | None = None
+    support_phone: str | None = None
+    currency_code: str | None = None
+    default_shipping_charge: Decimal | None = None
+    low_stock_threshold: int | None = None
+    maintenance_mode: bool | None = None
+
+
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    admin_name: str
+    action: str
+    entity_type: str
+    entity_id: str | None
+    description: str
+    created_at: datetime

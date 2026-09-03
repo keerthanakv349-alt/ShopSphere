@@ -22,6 +22,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user, require_role
+from app.core.audit import log_admin_action
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.admin import AdminUserOut, UserRoleUpdate, UserStatusUpdate
@@ -59,6 +60,16 @@ def update_user_status(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
     user.is_active = payload.is_active
+
+    log_admin_action(
+        db,
+        current_user,
+        action="status_change",
+        entity_type="user",
+        entity_id=str(user.id),
+        description=f"{'Activated' if payload.is_active else 'Deactivated'} account '{user.email}'",
+    )
+
     db.commit()
     db.refresh(user)
     return user
@@ -78,7 +89,18 @@ def update_user_role(
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    previous_role = user.role
     user.role = payload.role
+
+    log_admin_action(
+        db,
+        current_user,
+        action="role_change",
+        entity_type="user",
+        entity_id=str(user.id),
+        description=f"Changed role of '{user.email}' from '{previous_role.value}' to '{payload.role.value}'",
+    )
+
     db.commit()
     db.refresh(user)
     return user

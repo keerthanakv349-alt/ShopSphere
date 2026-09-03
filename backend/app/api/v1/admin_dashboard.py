@@ -9,11 +9,9 @@ status=PAID are the ground truth for money that has actually changed
 hands, same principle as why Payment is its own table at all (see
 models/payment.py).
 
-WHY LOW-STOCK IS A FIXED THRESHOLD HERE, NOT CONFIGURABLE:
-A real system would let admins set a per-product or per-category
-reorder threshold (Settings module — out of scope for this phase). A
-single constant is enough to demonstrate the concept without building
-a whole configuration UI for one number.
+LOW-STOCK THRESHOLD now comes from the admin-configurable
+StoreSettings row (see app/models/settings.py) instead of a hardcoded
+constant — admins can tune it from /admin/settings.
 """
 from decimal import Decimal
 
@@ -26,17 +24,18 @@ from app.db.session import get_db
 from app.models.catalog import Product, ProductStatus, ProductVariant
 from app.models.order import Order
 from app.models.payment import Payment, PaymentStatus
+from app.models.settings import get_or_create_settings
 from app.models.user import User, UserRole
 from app.schemas.admin import DashboardSummary
 
 router = APIRouter(prefix="/api/v1/admin/dashboard", tags=["admin-dashboard"])
 admin_only = require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 
-LOW_STOCK_THRESHOLD = 5
-
 
 @router.get("/summary", response_model=DashboardSummary)
 def get_dashboard_summary(db: Session = Depends(get_db), _: User = Depends(admin_only)):
+    low_stock_threshold = get_or_create_settings(db).low_stock_threshold
+
     total_revenue = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
         .filter(Payment.status == PaymentStatus.PAID)
@@ -49,7 +48,7 @@ def get_dashboard_summary(db: Session = Depends(get_db), _: User = Depends(admin
     )
     low_stock_variant_count = (
         db.query(func.count(ProductVariant.id))
-        .filter(ProductVariant.stock_quantity <= LOW_STOCK_THRESHOLD)
+        .filter(ProductVariant.stock_quantity <= low_stock_threshold)
         .scalar()
     )
 

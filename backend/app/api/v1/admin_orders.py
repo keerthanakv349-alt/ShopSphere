@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.v1.deps import require_role
+from app.core.audit import log_admin_action
 from app.core.notifications import notify_user
 from app.db.session import get_db
 from app.models.notification import NotificationType
@@ -49,7 +50,7 @@ async def admin_update_order_status(
     order_id: uuid.UUID,
     payload: OrderStatusUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     order = db.query(Order).filter(Order.id == order_id).options(selectinload(Order.items)).first()
     if order is None:
@@ -62,7 +63,18 @@ async def admin_update_order_status(
             f"Cannot move an order from '{order.status.value}' to '{payload.status.value}'",
         )
 
+    previous_status = order.status
     order.status = payload.status
+
+    log_admin_action(
+        db,
+        current_user,
+        action="status_change",
+        entity_type="order",
+        entity_id=str(order.id),
+        description=f"Order {order.order_number}: '{previous_status.value}' → '{payload.status.value}'",
+    )
+
     db.commit()
     db.refresh(order)
 

@@ -6,7 +6,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { deleteProduct, fetchAdminProducts, uploadProductImage } from "@/lib/admin";
+import {
+  deleteProduct,
+  exportProductsCsv,
+  fetchAdminProducts,
+  importProductsCsv,
+  uploadProductImage,
+} from "@/lib/admin";
 import { getMediaUrl } from "@/lib/media";
 import { formatINR } from "@/lib/price";
 import { ErrorState } from "@/components/ErrorState";
@@ -21,6 +27,8 @@ export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin", "products"],
@@ -46,6 +54,29 @@ export default function AdminProductsPage() {
     onSettled: () => setUploadingFor(null),
   });
 
+  const importMutation = useMutation({
+    mutationFn: importProductsCsv,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      const summary = `${result.products_created} created, ${result.products_updated} updated, ${result.variants_created + result.variants_updated} variant(s) touched`;
+      if (result.errors.length > 0) {
+        toast.error(
+          `Import finished with ${result.errors.length} row error(s): ${summary}. First issue — row ${result.errors[0].row}: ${result.errors[0].message}`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success(`Import complete — ${summary}`);
+      }
+    },
+    onError: (error: unknown) => {
+      const detail =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined;
+      toast.error(detail ?? "Import failed — check the file is a valid products CSV");
+    },
+  });
+
   function handleImageButtonClick(productId: string) {
     setUploadingFor(productId);
     fileInputRef.current?.click();
@@ -59,16 +90,60 @@ export default function AdminProductsPage() {
     e.target.value = "";
   }
 
+  function handleCsvFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      importMutation.mutate(file);
+    }
+    e.target.value = "";
+  }
+
+  async function handleExportClick() {
+    setIsExporting(true);
+    try {
+      const blob = await exportProductsCsv();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "products.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Products</h1>
-        <Link href="/admin/products/new" className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">
-          + Add Product
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleExportClick}
+            disabled={isExporting}
+            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium disabled:opacity-60 dark:border-neutral-700"
+          >
+            {isExporting ? "Exporting…" : "Export CSV"}
+          </button>
+          <button
+            onClick={() => csvInputRef.current?.click()}
+            disabled={importMutation.isPending}
+            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium disabled:opacity-60 dark:border-neutral-700"
+          >
+            {importMutation.isPending ? "Importing…" : "Import CSV"}
+          </button>
+          <Link href="/admin/products/new" className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white">
+            + Add Product
+          </Link>
+        </div>
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileSelected} />
+      <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFileSelected} />
 
       {isLoading ? (
         <p className="text-sm text-neutral-500">Loading…</p>

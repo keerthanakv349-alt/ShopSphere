@@ -19,13 +19,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.v1.deps import get_current_user, require_role
+from app.core.audit import log_admin_action
 from app.core.notifications import notify_user
 from app.db.session import get_db
 from app.models.delivery import DeliveryPartner, TrackingEvent, TrackingStatus
 from app.models.notification import NotificationType
 from app.models.order import Order
 from app.models.user import User, UserRole
-from app.schemas.delivery import DeliveryPartnerCreate, DeliveryPartnerOut, TrackingEventCreate, TrackingEventOut
+from app.schemas.delivery import (
+    DeliveryPartnerCreate,
+    DeliveryPartnerOut,
+    DeliveryPartnerUpdate,
+    TrackingEventCreate,
+    TrackingEventOut,
+)
 
 router = APIRouter(tags=["delivery"])
 admin_only = require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -42,10 +49,21 @@ _STATUS_LABELS: dict[TrackingStatus, str] = {
 # --- Admin: delivery partners ---
 @router.post("/api/v1/admin/delivery-partners", response_model=DeliveryPartnerOut, status_code=status.HTTP_201_CREATED)
 def create_delivery_partner(
-    payload: DeliveryPartnerCreate, db: Session = Depends(get_db), _: User = Depends(admin_only)
+    payload: DeliveryPartnerCreate, db: Session = Depends(get_db), current_user: User = Depends(admin_only)
 ):
     partner = DeliveryPartner(**payload.model_dump())
     db.add(partner)
+    db.flush()
+
+    log_admin_action(
+        db,
+        current_user,
+        action="create",
+        entity_type="delivery_partner",
+        entity_id=str(partner.id),
+        description=f"Added delivery partner '{partner.name}'",
+    )
+
     db.commit()
     db.refresh(partner)
     return partner
@@ -54,6 +72,36 @@ def create_delivery_partner(
 @router.get("/api/v1/admin/delivery-partners", response_model=list[DeliveryPartnerOut])
 def list_delivery_partners(db: Session = Depends(get_db), _: User = Depends(admin_only)):
     return db.query(DeliveryPartner).order_by(DeliveryPartner.name).all()
+
+
+@router.put("/api/v1/admin/delivery-partners/{partner_id}", response_model=DeliveryPartnerOut)
+def update_delivery_partner(
+    partner_id: uuid.UUID,
+    payload: DeliveryPartnerUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_only),
+):
+    partner = db.get(DeliveryPartner, partner_id)
+    if partner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Delivery partner not found")
+
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(partner, field, value)
+
+    if changes:
+        log_admin_action(
+            db,
+            current_user,
+            action="update",
+            entity_type="delivery_partner",
+            entity_id=str(partner.id),
+            description=f"Updated delivery partner '{partner.name}' ({', '.join(changes.keys())})",
+        )
+
+    db.commit()
+    db.refresh(partner)
+    return partner
 
 
 # --- Admin: add a tracking event (this is what advances/"simulates" a shipment) ---

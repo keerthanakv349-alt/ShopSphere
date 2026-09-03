@@ -61,6 +61,8 @@ from app.core.security_headers import SecurityHeadersMiddleware
 
 from app.api.v1.admin_banners import router as admin_banners_router
 from app.api.v1.banners import router as banners_router
+from app.api.v1.admin_settings import router as admin_settings_router
+from app.api.v1.admin_audit_log import router as admin_audit_log_router
 
 setup_logging()
 
@@ -140,6 +142,8 @@ app.include_router(recommendations_router)
 
 app.include_router(admin_banners_router)
 app.include_router(banners_router)
+app.include_router(admin_settings_router)
+app.include_router(admin_audit_log_router)
 
 @app.get("/health", tags=["health"])
 def health_check():

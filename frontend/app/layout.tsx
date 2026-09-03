@@ -1,7 +1,6 @@
 ﻿// import type { Metadata } from "next";
 // import { Toaster } from "react-hot-toast";
 // import { AppHeader } from "@/components/AppHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 // import { ReactQueryProvider } from "./providers";
 // import "./globals.css";
 
@@ -40,6 +39,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import { AppHeader } from "@/components/AppHeader";
+import { AppFooter } from "@/components/AppFooter";
 import { ReactQueryProvider } from "./providers";
 import "./globals.css";
 
@@ -63,7 +63,9 @@ export default function RootLayout({
         <ReactQueryProvider>
           <AppHeader />
 
-          {children}          <SiteFooter />
+          {children}
+
+          <AppFooter />
 
           <Toaster position="top-center" />
         </ReactQueryProvider>

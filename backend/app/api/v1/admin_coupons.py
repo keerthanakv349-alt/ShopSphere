@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import require_role
+from app.core.audit import log_admin_action
 from app.db.session import get_db
 from app.models.coupon import Coupon
 from app.models.user import User, UserRole
@@ -29,7 +30,7 @@ admin_only = require_role(
 def create_coupon(
     payload: CouponCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     code = payload.code.upper()
 
@@ -47,6 +48,17 @@ def create_coupon(
     )
 
     db.add(coupon)
+    db.flush()
+
+    log_admin_action(
+        db,
+        current_user,
+        action="create",
+        entity_type="coupon",
+        entity_id=str(coupon.id),
+        description=f"Created coupon '{coupon.code}'",
+    )
+
     db.commit()
     db.refresh(coupon)
 
@@ -76,7 +88,7 @@ def update_coupon(
     coupon_id: str,
     payload: CouponCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     coupon = (
         db.query(Coupon)
@@ -112,6 +124,15 @@ def update_coupon(
 
     coupon.code = code
 
+    log_admin_action(
+        db,
+        current_user,
+        action="update",
+        entity_type="coupon",
+        entity_id=str(coupon.id),
+        description=f"Updated coupon '{coupon.code}'",
+    )
+
     db.commit()
     db.refresh(coupon)
 
@@ -126,7 +147,7 @@ def update_coupon_status(
     coupon_id: str,
     is_active: bool,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     coupon = (
         db.query(Coupon)
@@ -142,6 +163,15 @@ def update_coupon_status(
 
     coupon.is_active = is_active
 
+    log_admin_action(
+        db,
+        current_user,
+        action="status_change",
+        entity_type="coupon",
+        entity_id=str(coupon.id),
+        description=f"{'Activated' if is_active else 'Deactivated'} coupon '{coupon.code}'",
+    )
+
     db.commit()
     db.refresh(coupon)
 
@@ -155,7 +185,7 @@ def update_coupon_status(
 def delete_coupon(
     coupon_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_user: User = Depends(admin_only),
 ):
     coupon = (
         db.query(Coupon)
@@ -168,6 +198,15 @@ def delete_coupon(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Coupon not found",
         )
+
+    log_admin_action(
+        db,
+        current_user,
+        action="delete",
+        entity_type="coupon",
+        entity_id=str(coupon.id),
+        description=f"Deleted coupon '{coupon.code}'",
+    )
 
     db.delete(coupon)
     db.commit()

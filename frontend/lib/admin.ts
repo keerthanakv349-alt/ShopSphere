@@ -231,6 +231,18 @@ export async function createDeliveryPartner(payload: DeliveryPartnerPayload) {
   return data;
 }
 
+export interface DeliveryPartnerUpdatePayload {
+  name?: string;
+  phone_number?: string;
+  vehicle_number?: string;
+  is_active?: boolean;
+}
+
+export async function updateDeliveryPartner(partnerId: string, payload: DeliveryPartnerUpdatePayload) {
+  const { data } = await api.put(`/api/v1/admin/delivery-partners/${partnerId}`, payload);
+  return data;
+}
+
 export interface TrackingEventPayload {
   status: string;
   location_label?: string;
@@ -464,5 +476,83 @@ export async function updateInventoryStock(
     }
   );
 
+  return data;
+}
+
+// --- Site settings ---
+
+export interface SiteSettings {
+  store_name: string;
+  support_email: string | null;
+  support_phone: string | null;
+  currency_code: string;
+  default_shipping_charge: string;
+  low_stock_threshold: number;
+  maintenance_mode: boolean;
+  updated_at: string;
+}
+
+export interface SiteSettingsUpdatePayload {
+  store_name?: string;
+  support_email?: string | null;
+  support_phone?: string | null;
+  currency_code?: string;
+  default_shipping_charge?: string;
+  low_stock_threshold?: number;
+  maintenance_mode?: boolean;
+}
+
+export async function fetchSettings(): Promise<SiteSettings> {
+  const { data } = await api.get<SiteSettings>("/api/v1/admin/settings");
+  return data;
+}
+
+export async function updateSettings(payload: SiteSettingsUpdatePayload): Promise<SiteSettings> {
+  const { data } = await api.put<SiteSettings>("/api/v1/admin/settings", payload);
+  return data;
+}
+
+// --- Audit log ---
+
+export interface AuditLogEntry {
+  id: string;
+  admin_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  description: string;
+  created_at: string;
+}
+
+export async function fetchAuditLog(params?: {
+  entity_type?: string;
+  action?: string;
+  q?: string;
+}): Promise<AuditLogEntry[]> {
+  const { data } = await api.get<AuditLogEntry[]>("/api/v1/admin/audit-log", { params });
+  return data;
+}
+
+// --- Bulk product CSV import/export ---
+
+export async function exportProductsCsv(): Promise<Blob> {
+  const { data } = await api.get("/api/v1/admin/products-export", { responseType: "blob" });
+  return data;
+}
+
+export interface ProductImportResult {
+  products_created: number;
+  products_updated: number;
+  variants_created: number;
+  variants_updated: number;
+  errors: { row: number; message: string }[];
+}
+
+export async function importProductsCsv(file: File): Promise<ProductImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post<ProductImportResult>("/api/v1/admin/products-import", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 }
