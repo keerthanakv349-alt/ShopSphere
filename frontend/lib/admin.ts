@@ -556,3 +556,32 @@ export async function importProductsCsv(file: File): Promise<ProductImportResult
   });
   return data;
 }
+
+// --- Reported issues ("Report an Issue") ---
+
+export interface AdminIssueReport {
+  id: string;
+  subject: string;
+  message: string;
+  status: "open" | "in_progress" | "resolved";
+  admin_response: string | null;
+  created_at: string;
+  updated_at: string;
+  user_name: string;
+  user_email: string;
+}
+
+export async function fetchAdminIssues(status?: string): Promise<AdminIssueReport[]> {
+  const { data } = await api.get<AdminIssueReport[]>("/api/v1/admin/issues", {
+    params: status ? { status } : undefined,
+  });
+  return data;
+}
+
+export async function updateIssueStatus(
+  issueId: string,
+  payload: { status: string; admin_response?: string }
+): Promise<AdminIssueReport> {
+  const { data } = await api.put<AdminIssueReport>(`/api/v1/admin/issues/${issueId}/status`, payload);
+  return data;
+}

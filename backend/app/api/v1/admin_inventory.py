@@ -147,6 +147,7 @@ def update_inventory_stock(
         description=f"Changed stock of SKU '{variant.sku}' from {previous_quantity} to {stock_quantity}",
     )
 
+    
     db.commit()
     db.refresh(variant)
 

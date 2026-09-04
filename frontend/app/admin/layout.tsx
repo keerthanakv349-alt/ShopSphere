@@ -36,6 +36,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/admin/users", label: "Customers" },
       { href: "/admin/notifications", label: "Notifications" },
+      { href: "/admin/issues", label: "Reported Issues" },
     ],
   },
   {
@@ -77,6 +78,7 @@ const NAV_ICONS: Record<string, string> = {
   Reviews: "★",
   Customers: "♙",
   Notifications: "●",
+  "Reported Issues": "⚑",
   Banners: "▰",
   "Sales Analytics": "▥",
   "Delivery Partners": "🚚",

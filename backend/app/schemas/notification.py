@@ -15,3 +15,7 @@ class NotificationOut(BaseModel):
     related_order_id: uuid.UUID | None
     is_read: bool
     created_at: datetime
+
+
+
+
