@@ -1,4 +1,9 @@
 
+
+
+
+
+
 # """
 # Database seed script — audit items #3 ("Empty Database"), #4 ("Product
 # Images"), and #12 ("Seed Script").
@@ -1278,72 +1283,72 @@
 
 #             continue
 
-#             product = Product(
-#                 name=spec["name"],
-#                 slug=slug,
-#                 description=spec["description"],
-#                 category_id=categories[category_name].id,
-#                 brand_id=brands[spec["brand"]].id,
-#                 base_price=spec["base_price"],
-#                 discount_percentage=spec["discount_percentage"],
-#                 gst_percentage=Decimal("12.00"),
-#                 status=ProductStatus.ACTIVE,
-#                 is_featured=spec["is_featured"],
-#                 is_trending=False,
+#         product = Product(
+#             name=spec["name"],
+#             slug=slug,
+#             description=spec["description"],
+#             category_id=categories[category_name].id,
+#             brand_id=brands[spec["brand"]].id,
+#             base_price=spec["base_price"],
+#             discount_percentage=spec["discount_percentage"],
+#             gst_percentage=Decimal("12.00"),
+#             status=ProductStatus.ACTIVE,
+#             is_featured=spec["is_featured"],
+#             is_trending=False,
+#         )
+
+#         product.variants = [
+#             ProductVariant(
+#                 sku=v["sku"],
+#                 size=v["size"],
+#                 color=v["color"],
+#                 stock_quantity=v["stock_quantity"],
 #             )
+#             for v in spec["variants"]
+#         ]
 
-#             product.variants = [
-#                 ProductVariant(
-#                     sku=v["sku"],
-#                     size=v["size"],
-#                     color=v["color"],
-#                     stock_quantity=v["stock_quantity"],
-#                 )
-#                 for v in spec["variants"]
-#             ]
+#         db.add(product)
+#         db.commit()
+#         db.refresh(product)
 
-#             db.add(product)
-#             db.commit()
-#             db.refresh(product)
-
-#             db.add(
-#                 ProductImage(
-#                     product_id=product.id,
-#                     image_url=_generate_placeholder_image(
-#                         product.id,
-#                         slug,
-#                         spec["name"],
-#                         spec["brand"],
-#                         spec["category"],
-#                         "-1",
-#                     ),
-#                     is_primary=True,
-#                     display_order=0,
-#                 )
+#         db.add(
+#             ProductImage(
+#                 product_id=product.id,
+#                 image_url=_generate_placeholder_image(
+#                     product.id,
+#                     slug,
+#                     spec["name"],
+#                     spec["brand"],
+#                     spec["category"],
+#                     "-1",
+#                 ),
+#                 is_primary=True,
+#                 display_order=0,
 #             )
+#         )
 
-#             db.add(
-#                 ProductImage(
-#                     product_id=product.id,
-#                     image_url=_generate_placeholder_image(
-#                         product.id,
-#                         slug,
-#                         spec["name"],
-#                         spec["brand"],
-#                         spec["category"],
-#                         "-2",
-#                     ),
-#                     is_primary=False,
-#                     display_order=1,
-#                 )
+#         db.add(
+#             ProductImage(
+#                 product_id=product.id,
+#                 image_url=_generate_placeholder_image(
+#                     product.id,
+#                     slug,
+#                     spec["name"],
+#                     spec["brand"],
+#                     spec["category"],
+#                     "-2",
+#                 ),
+#                 is_primary=False,
+#                 display_order=1,
 #             )
+#         )
 
-#             db.commit()
+#         db.commit()
 
-#             print(
-#                 f"  [ok] created product: {spec['name']} "
-#                 f"({len(spec['variants'])} variant(s), 2 image(s))"
-#             )
+#         print(
+#             f"  [ok] created product: {spec['name']} "
+#             f"({len(spec['variants'])} variant(s), 2 image(s))"
+#         )
 
 # def seed_coupons(db) -> None:
 #     """Optional, per audit item #3's brief — a couple of realistic coupons
@@ -1434,6 +1439,10 @@
 
 # if __name__ == "__main__":
 #     main()
+ 
+
+
+
 
 
 
@@ -2639,7 +2648,7 @@ def seed_products(
 
         category_name = PRODUCT_CATEGORY_MAP.get(
             product_name,
-            spec["category"],
+            spec["category"], 
         )
 
         if category_name not in categories:
@@ -2712,10 +2721,70 @@ def seed_products(
             db.add(existing)
             db.commit()
 
+            # Recreate missing placeholder image files for existing products.
+            existing_images = (
+                db.query(ProductImage)
+                .filter(ProductImage.product_id == existing.id)
+                .order_by(ProductImage.display_order)
+                .all()
+            )
+
+            image_specs = [
+                (0, True, "-1"),
+                (1, False, "-2"),
+            ]
+
+            for display_order, is_primary, suffix in image_specs:
+                filename = f"{slug}{suffix}.jpg"
+                image_path = (
+                    MEDIA_ROOT
+                    / "products"
+                    / str(existing.id)
+                    / filename
+                )
+
+                if not image_path.exists():
+                    _generate_placeholder_image(
+                        existing.id,
+                        slug,
+                        spec["name"],
+                        spec["brand"],
+                        spec["category"],
+                        suffix,
+                    )
+
+                existing_image = next(
+                    (
+                        image
+                        for image in existing_images
+                        if image.display_order == display_order
+                    ),
+                    None,
+                )
+
+                image_url = f"/media/products/{existing.id}/{filename}"
+
+                if existing_image:
+                    existing_image.image_url = image_url
+                    existing_image.is_primary = is_primary
+                    existing_image.display_order = display_order
+                else:
+                    db.add(
+                        ProductImage(
+                            product_id=existing.id,
+                            image_url=image_url,
+                            is_primary=is_primary,
+                            display_order=display_order,
+                        )
+                    )
+
+            db.commit()
+
             print(
                 f"  [update] product '{product_name}' "
                 f"→ category '{category_name}' "
-                f"→ subcategory '{subcategory}'"
+                f"→ subcategory '{subcategory}' "
+                f"→ images checked"
             )
 
             continue
