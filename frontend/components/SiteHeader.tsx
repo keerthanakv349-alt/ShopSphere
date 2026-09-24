@@ -933,7 +933,7 @@ export function SiteHeader() {
                   ]
                 ).map(([section, items]) => (
                   <div key={section}>
-                    {SECTION_IMAGES[activeCategory]?.[section] && (
+                    {/* {SECTION_IMAGES[activeCategory]?.[section] && (
                       <div className="relative mb-3 aspect-[4/3] w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900">
                         <Image
                           src={getMediaUrl(SECTION_IMAGES[activeCategory][section])!}
@@ -943,7 +943,7 @@ export function SiteHeader() {
                           sizes="180px"
                         />
                       </div>
-                    )}
+                    )} */}
 
                     <h3 className="mb-3 text-xs font-bold text-brand">
                       {section}

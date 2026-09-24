@@ -52,7 +52,7 @@ export function SiteFooter() {
                 Home
               </Link>
               <Link href="/products" className="hover:text-brand">
-                Beauty
+                Beauty products 
               </Link>
               <Link href="/coupons" className="hover:text-brand">
                 Coupons
@@ -126,6 +126,7 @@ export function SiteFooter() {
               Shop fashion, lifestyle products, and more with a simple and
               convenient shopping experience.
             </p>
+
 
             <div className="flex flex-wrap gap-2">
               <span className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs font-medium dark:border-neutral-700 dark:bg-neutral-900">

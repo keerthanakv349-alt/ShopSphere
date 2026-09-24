@@ -11,6 +11,11 @@ export function ProductCard({ product }: { product: Product }) {
   const discounted = calculateDiscountedPrice(product.base_price, product.discount_percentage);
   const hasDiscount = parseFloat(product.discount_percentage) > 0;
   const imageUrl = getMediaUrl(product.primary_image_url);
+
+  console.log("IMAGE DEBUG:", {
+  original: product.primary_image_url,
+  final: imageUrl,
+});
   // Older localStorage-cached "recently viewed" entries may predate this
   // field — treat missing stock info as healthy rather than crashing.
   const stockLabel = product.total_stock != null ? getStockLabel(product.total_stock) : null;
