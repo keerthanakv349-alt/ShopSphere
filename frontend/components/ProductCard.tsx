@@ -2,12 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useCallback, useState } from "react";
+import { SimilarProductsDrawer } from "@/components/SimilarProductsDrawer";
 import { getMediaUrl } from "@/lib/media";
 import { calculateDiscountedPrice, formatINR } from "@/lib/price";
 import { getStockLabel } from "@/lib/stock";
 import type { Product } from "@/types/catalog";
 
 export function ProductCard({ product }: { product: Product }) {
+  const [showSimilar, setShowSimilar] = useState(false);
+  const closeSimilar = useCallback(() => setShowSimilar(false), []);
   const discounted = calculateDiscountedPrice(product.base_price, product.discount_percentage);
   const hasDiscount = parseFloat(product.discount_percentage) > 0;
   const imageUrl = getMediaUrl(product.primary_image_url);
@@ -22,10 +26,8 @@ export function ProductCard({ product }: { product: Product }) {
   const isOutOfStock = stockLabel === "Out of stock";
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
-      className="group block overflow-hidden rounded border border-outline-variant bg-surface-container-lowest transition hover:shadow-md dark:border-neutral-800"
-    >
+    <div className="overflow-hidden rounded border border-outline-variant bg-surface-container-lowest transition hover:shadow-md dark:border-neutral-800">
+    <Link href={`/products/${product.slug}`} className="group block">
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-container dark:bg-neutral-900">
         {imageUrl ? (
           <Image
@@ -77,5 +79,14 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </div>
     </Link>
+      <button
+        type="button"
+        onClick={() => setShowSimilar(true)}
+        className="w-full border-t border-outline-variant py-2 text-sm font-medium text-brand transition hover:bg-brand/5 dark:border-neutral-800"
+      >
+        View Similar
+      </button>
+      <SimilarProductsDrawer product={product} open={showSimilar} onClose={closeSimilar} />
+    </div>
   );
 }

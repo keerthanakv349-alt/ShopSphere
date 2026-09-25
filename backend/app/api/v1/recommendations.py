@@ -28,7 +28,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
-from app.models.catalog import Product, ProductStatus
+from app.models.catalog import Category, Product, ProductStatus
 from app.models.order import OrderItem
 from app.schemas.catalog import ProductOut
 
@@ -63,6 +63,67 @@ def get_related_products(slug: str, db: Session = Depends(get_db), limit: int = 
         .limit(limit)
     )
     return db.execute(stmt).scalars().all()
+
+
+def _similarity_score(source: Product, candidate: Product) -> float:
+    """
+    Rule-based similarity for the "View Similar" drawer on product cards.
+
+    Higher is more similar. Same category is the baseline (a sibling-category
+    backfill scores lower), then same subcategory ("jeans" vs "shirts" inside
+    "Men - Bottoms") matters most, then same brand, then how close the price
+    is — a ₹999 tee and a ₹9,999 tee are both tees but not really alternatives.
+    """
+    score = 0.0
+    if candidate.category_id == source.category_id:
+        score += 4
+    if source.subcategory and candidate.subcategory == source.subcategory:
+        score += 3
+    if candidate.brand_id == source.brand_id:
+        score += 1
+
+    source_price = float(source.base_price or 0)
+    candidate_price = float(candidate.base_price or 0)
+    if source_price > 0:
+        # 0 when prices match, approaching -2 as the gap grows.
+        gap = abs(candidate_price - source_price) / source_price
+        score -= min(gap, 1.0) * 2
+    return score
+
+
+@router.get("/{slug}/similar", response_model=list[ProductOut])
+def get_similar_products(slug: str, db: Session = Depends(get_db), limit: int = Query(default=12, le=24)):
+    product = _load_product_or_404(db, slug)
+
+    # Same category, plus sibling categories under the same parent (e.g.
+    # "Women - Tops" → other "Women - *" categories) so small categories
+    # still produce a useful list instead of "No similar products".
+    category_ids = [product.category_id]
+    parent_id = product.category.parent_id if product.category else None
+    if parent_id is not None:
+        category_ids += [
+            cid
+            for (cid,) in db.query(Category.id).filter(Category.parent_id == parent_id).all()
+            if cid != product.category_id
+        ]
+
+    candidates = (
+        db.query(Product)
+        .filter(
+            Product.category_id.in_(category_ids),
+            Product.id != product.id,
+            Product.status == ProductStatus.ACTIVE,
+        )
+        .options(
+            selectinload(Product.category),
+            selectinload(Product.brand),
+            selectinload(Product.images),
+            selectinload(Product.variants),
+        )
+        .all()
+    )
+    candidates.sort(key=lambda c: (-_similarity_score(product, c), c.name))
+    return candidates[:limit]
 
 
 @router.get("/{slug}/frequently-bought-together", response_model=list[ProductOut])

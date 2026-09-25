@@ -59,6 +59,11 @@ export async function fetchRelatedProducts(slug: string): Promise<Product[]> {
   return data;
 }
 
+export async function fetchSimilarProducts(slug: string): Promise<Product[]> {
+  const { data } = await api.get<Product[]>(`/api/v1/products/${slug}/similar`);
+  return data;
+}
+
 export async function fetchFrequentlyBoughtTogether(slug: string): Promise<Product[]> {
   const { data } = await api.get<Product[]>(`/api/v1/products/${slug}/frequently-bought-together`);
   return data;
